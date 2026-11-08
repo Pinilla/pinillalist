@@ -1,0 +1,26 @@
+[Unit]
+Description=pinillalist grocery list and recipe app
+After=network.target
+
+[Service]
+Type=simple
+User=pinillalist
+Group=pinillalist
+WorkingDirectory=/opt/pinillalist
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3100
+Environment=PINILLALIST_DATA=/var/lib/pinillalist
+Environment=PINILLALIST_DIST=/opt/pinillalist/dist
+ExecStart=/opt/node/bin/node src/server/main.ts
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/pinillalist
+
+[Install]
+WantedBy=multi-user.target
