@@ -1,0 +1,315 @@
+<title>Saturday Order Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one phone column (max 480px), app chrome per variant, prototype switcher pinned bottom-centre. */
+:root {
+  --bg: #eef2ef; --surface: #ffffff; --ink: #17231d; --muted: #5d6b63; --line: #d5ddd8;
+  --accent: #1e6b4f; --accent-ink: #ffffff; --accent-soft: #d9ebe2;
+  --have: #8a958f; --walmart: #2f5fb3; --amazon: #b06a00; --warn: #a8432a;
+  --proto-bg: #1b1b1f; --proto-ink: #f4f4f6;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101613; --surface: #18211c; --ink: #e6eee9; --muted: #9aa8a0; --line: #2b3831;
+  --accent: #5fc79b; --accent-ink: #0c1a13; --accent-soft: #1f3a2d;
+  --have: #6c7871; --walmart: #86a9ec; --amazon: #e2a54a; --warn: #f08a6c;
+  --proto-bg: #f4f4f6; --proto-ink: #1b1b1f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #101613; --surface: #18211c; --ink: #e6eee9; --muted: #9aa8a0; --line: #2b3831;
+  --accent: #5fc79b; --accent-ink: #0c1a13; --accent-soft: #1f3a2d;
+  --have: #6c7871; --walmart: #86a9ec; --amazon: #e2a54a; --warn: #f08a6c;
+  --proto-bg: #f4f4f6; --proto-ink: #1b1b1f; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.4 }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+button { font: inherit; color: inherit; cursor: pointer }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em }
+h1 { font-size: 1.6rem; font-weight: 800 } h2 { font-size: 1.2rem; font-weight: 600 } h3 { font-size: 1rem; font-weight: 600 }
+.wrap { max-width: 480px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 150px }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700 }
+.muted { color: var(--muted) } .small { font-size: 0.85rem }
+.stack { display: flex; flex-direction: column; gap: 12px } .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.btn { border: 0; border-radius: 10px; padding: 12px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 700 }
+.btn.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent) }
+.btn.big { width: 100%; padding: 16px; font-size: 1.05rem }
+.chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 0.9rem }
+.chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+.store { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap }
+.store.walmart { color: var(--walmart) } .store.amazon { color: var(--amazon) }
+.thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: var(--accent-soft); flex: none; display: grid; place-items: center; font-family: var(--display); font-weight: 800; color: var(--accent) }
+.list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+.li { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; width: 100% }
+.li:last-child { border-bottom: 0 }
+.li .grow { flex: 1; min-width: 0 }
+.li .name { font-weight: 700; overflow-wrap: anywhere }
+.li.have .name { text-decoration: line-through; color: var(--have) }
+.tick { width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--line); flex: none; display: grid; place-items: center; font-weight: 800 }
+.tick.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+input[type=search], input[type=text] { width: 100%; font: inherit; padding: 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink) }
+.note { border-left: 4px solid var(--warn); background: var(--surface); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.78rem; overflow-wrap: anywhere }
+.sticky-foot { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px max(16px, env(safe-area-inset-left, 0px)) calc(64px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); background: linear-gradient(to top, var(--bg) 75%, transparent) }
+.sticky-foot > div { max-width: 448px; margin: 0 auto }
+/* Variant A */
+.steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-block: 8px 4px }
+.steps span { height: 6px; border-radius: 3px; background: var(--line) } .steps span.done { background: var(--accent) }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px 20px; text-align: center; display: flex; flex-direction: column; gap: 8px; min-height: 220px; justify-content: center }
+.card .big { font-family: var(--display); font-size: 1.9rem; font-weight: 800; overflow-wrap: anywhere }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.two .btn { padding: 18px 8px; font-size: 1.1rem }
+/* Variant C */
+.tabs { position: fixed; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr); max-width: 480px; margin: 0 auto; background: var(--surface); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0 }
+.tabs button { border: 0; background: none; padding: 10px 4px; font-weight: 700; font-size: 0.85rem; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px }
+.tabs button.on { color: var(--accent) }
+.tabs .count { font-family: var(--display); font-size: 1.1rem }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px }
+.tile { border: 2px solid transparent; background: var(--surface); border-radius: 12px; padding: 0; overflow: hidden; text-align: left; display: flex; flex-direction: column }
+.tile.on { border-color: var(--accent) }
+.tile img, .tile .ph { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--accent-soft); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 1.6rem; color: var(--accent); max-width: 100% }
+.tile .t { padding: 8px 10px; font-weight: 700; font-size: 0.9rem; overflow-wrap: anywhere }
+.pill-grid { display: flex; flex-wrap: wrap; gap: 8px }
+.pill-grid .chip { padding: 10px 14px; font-size: 0.95rem }
+.storebox { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px }
+/* Sheet (variant B) */
+.sheet { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); z-index: 20; display: flex; align-items: flex-end }
+.sheet > div { background: var(--bg); width: 100%; max-width: 480px; margin: 0 auto; max-height: 85%; overflow: auto; border-radius: 18px 18px 0 0; padding: 16px max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 12px }
+/* Prototype chrome: deliberately not part of the design */
+.proto { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 30; display: flex; align-items: center; gap: 4px; background: var(--proto-bg); color: var(--proto-ink); border-radius: 999px; padding: 4px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.3); font-size: 0.85rem; max-width: calc(100% - 24px) }
+.proto button { border: 0; background: none; color: var(--proto-ink); padding: 6px 12px; border-radius: 999px; font-weight: 700 }
+.proto .lbl { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.statepanel { position: fixed; inset: auto 0 calc(56px + env(safe-area-inset-bottom, 0px)) 0; z-index: 25; max-width: 480px; margin: 0 auto; max-height: 50%; overflow: auto; background: var(--proto-bg); color: var(--proto-ink); border-radius: 12px; padding: 12px; white-space: pre-wrap }
+@media (prefers-reduced-motion: no-preference) { .card { animation: pop 0.18s ease-out } @keyframes pop { from { transform: scale(0.97); opacity: 0.6 } } }
+</style>
+
+<div id="app"></div>
+<div id="statepanel" class="statepanel mono" hidden></div>
+<nav class="proto" aria-label="Prototype switcher">
+  <button id="prev" aria-label="Previous variant">&larr;</button>
+  <span class="lbl" id="vlabel"></span>
+  <button id="next" aria-label="Next variant">&rarr;</button>
+  <button id="statebtn" aria-label="Show state">State</button>
+  <button id="resetbtn" aria-label="Start over">Reset</button>
+</nav>
+
+<script>/*DATA*/</script>
+<script>
+// PROTOTYPE, throw away. Three variants of the Saturday weekly order, sharing one in-memory state.
+const D = window.DATA;
+const EXAMPLE_AMAZON = new Set(["plackers", "litter"]);
+const KID_EXAMPLES = ["Diapers, size 5", "Baby wipes", "Fruit pouches", "Toddler yogurt melts", "Goldfish crackers", "Bananas"];
+const KID_AMAZON = new Set(["diapers, size 5", "baby wipes"]);
+const RECIPES = Object.fromEntries(D.recipes.map(r => [r.id, r]));
+const VARIANTS = [
+  { key: "a", name: "Step by step" },
+  { key: "b", name: "One list" },
+  { key: "c", name: "Tabs" },
+];
+
+function fresh() { return { recipes: [], have: {}, essentials: [], extras: [], stepA: 0, cardA: 0, tabC: "plan", colC: "All", sheetB: false, essOpenB: false }; }
+let S = fresh();
+
+// Merge ingredients from chosen recipes into items, keyed by a rough normalized name.
+function norm(n) { return n.toLowerCase().replace(/\(.*?\)/g, "").split(",")[0].replace(/\s+/g, " ").trim(); }
+function storeFor(key) { return EXAMPLE_AMAZON.has(key) || KID_AMAZON.has(key) ? "amazon" : "walmart"; }
+function recipeItems() {
+  const map = new Map();
+  for (const id of S.recipes) {
+    const r = RECIPES[id];
+    for (const ing of r.ings) {
+      const key = norm(ing.n);
+      if (!map.has(key)) map.set(key, { key, name: ing.n.replace(/\(.*?\)/g, "").split(",")[0].trim() || ing.n, amounts: [], from: [] });
+      const it = map.get(key);
+      it.amounts.push(ing.q || "some");
+      if (!it.from.includes(r.name)) it.from.push(r.name);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+function orderLines() {
+  const lines = [];
+  for (const it of recipeItems()) if (!S.have[it.key]) lines.push({ name: it.name, why: it.from.join(", "), store: storeFor(it.key) });
+  for (const e of S.essentials) lines.push({ name: e, why: "Essentials", store: storeFor(norm(e)) });
+  for (const x of S.extras) lines.push({ name: x, why: "Added", store: storeFor(norm(x)) });
+  return lines;
+}
+function cartUrl(store, lines) {
+  const ls = lines.filter(l => l.store === store);
+  if (store === "walmart") return "https://www.walmart.com/sc/cart/addToCart?items=" + ls.map((l, i) => `EX${1000 + i}_1`).join(",");
+  return "https://www.amazon.com/gp/aws/cart/add.html?" + ls.map((l, i) => `ASIN.${i + 1}=EXAMPLE${i + 1}&Quantity.${i + 1}=1`).join("&");
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const initials = n => esc(n.split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase());
+const thumb = (r, cls = "thumb") => r.thumb ? `<img class="${cls}" src="${r.thumb}" alt="">` : `<div class="${cls}">${initials(r.name)}</div>`;
+const storeTag = s => `<span class="store ${s}">${s === "walmart" ? "Walmart" : "Amazon"}</span>`;
+function toggle(arr, v) { const i = arr.indexOf(v); i < 0 ? arr.push(v) : arr.splice(i, 1); }
+function catalogNames() {
+  const set = new Set([...KID_EXAMPLES, ...D.essentials]);
+  for (const r of D.recipes) for (const i of r.ings) set.add(i.n.replace(/\(.*?\)/g, "").split(",")[0].trim());
+  return [...set].filter(Boolean);
+}
+const CATALOG = catalogNames();
+
+// ---------- shared pieces ----------
+function recipePicker(filter) {
+  const rs = D.recipes.filter(r => filter === "All" || r.cols.includes(filter));
+  return `<div class="list">${rs.map(r => `
+    <button class="li" data-act="recipe" data-id="${r.id}">
+      ${thumb(r)}<div class="grow"><div class="name">${esc(r.name)}</div><div class="small muted">${esc(r.cols.join(" · ") || "No collection")} · ${r.ings.length} ingredients</div></div>
+      <span class="tick ${S.recipes.includes(r.id) ? "on" : ""}">${S.recipes.includes(r.id) ? "&#10003;" : ""}</span>
+    </button>`).join("")}</div>`;
+}
+function collectionChips(cur, act) {
+  return `<div class="row">${["All", ...D.collections].map(c => `<button class="chip ${c === cur ? "on" : ""}" data-act="${act}" data-col="${esc(c)}">${esc(c)}</button>`).join("")}</div>`;
+}
+function extrasBlock() {
+  const q = (document.getElementById("extraq") || {}).value || "";
+  const hits = q.length < 2 ? KID_EXAMPLES.filter(k => !S.extras.includes(k)) : CATALOG.filter(n => n.toLowerCase().includes(q.toLowerCase()) && !S.extras.includes(n)).slice(0, 8);
+  return `<div class="stack">
+    <input type="search" id="extraq" placeholder="Search the catalog or type something new" value="${esc(q)}" autocomplete="off">
+    <div class="pill-grid">${hits.map(h => `<button class="chip" data-act="extra-add" data-name="${esc(h)}">+ ${esc(h)}</button>`).join("")}
+      ${q.length >= 2 && !CATALOG.some(n => n.toLowerCase() === q.toLowerCase()) ? `<button class="chip" data-act="extra-add" data-name="${esc(q)}">+ Add "${esc(q)}" as new</button>` : ""}</div>
+    ${q.length < 2 ? `<div class="small muted">Suggestions are made-up examples of things for a 2-year-old.</div>` : ""}
+    ${S.extras.length ? `<div class="list">${S.extras.map(x => `<button class="li" data-act="extra-del" data-name="${esc(x)}"><div class="grow name">${esc(x)}</div>${storeTag(storeFor(norm(x)))}<span class="muted small">Remove</span></button>`).join("")}</div>` : ""}
+  </div>`;
+}
+function sendBlock() {
+  const lines = orderLines();
+  const stores = ["walmart", "amazon"].map(s => {
+    const ls = lines.filter(l => l.store === s);
+    if (!ls.length) return "";
+    return `<div class="storebox">
+      <div class="row" style="justify-content:space-between"><h2>${s === "walmart" ? "Walmart" : "Amazon"}</h2><span class="muted">${ls.length} items</span></div>
+      <div class="small">${ls.map(l => esc(l.name)).join(", ")}</div>
+      <button class="btn big" data-act="send" data-store="${s}">Fill my ${s === "walmart" ? "Walmart" : "Amazon"} cart</button>
+      <div class="small muted" id="url-${s}" hidden>Would open: <code>${esc(cartUrl(s, lines))}</code><br>(Example product IDs. Nothing is linked to real products yet.)</div>
+    </div>`;
+  }).join("");
+  return stores || `<p class="muted">Nothing to order yet.</p>`;
+}
+
+// ---------- Variant A: step by step ----------
+const STEPS_A = ["Pick recipes", "Stock check", "Essentials", "Anything else", "Fill carts"];
+function renderA() {
+  const st = S.stepA, items = recipeItems();
+  let body = "";
+  if (st === 0) body = `<p class="muted">Choose this week's dinners and lunches. ${S.recipes.length} chosen.</p>${collectionChips(S.colC, "colC")}${recipePicker(S.colC)}`;
+  if (st === 1) {
+    if (!items.length) body = `<p class="muted">No recipes chosen, so there's nothing to check.</p>`;
+    else if (S.cardA >= items.length) {
+      const need = items.filter(i => !S.have[i.key]).length;
+      body = `<div class="card"><div class="big">Done</div><div>${need} to buy, ${items.length - need} already at home.</div></div>
+        <div class="list">${items.map(i => `<button class="li ${S.have[i.key] ? "have" : ""}" data-act="have" data-key="${esc(i.key)}"><div class="grow"><div class="name">${esc(i.name)}</div><div class="small muted">${esc(i.from.join(", "))}</div></div><span class="small muted">${S.have[i.key] ? "Have it" : "Need it"}</span></button>`).join("")}</div>`;
+    } else {
+      const it = items[S.cardA];
+      body = `<div class="label">${S.cardA + 1} of ${items.length}</div>
+        <div class="card"><div class="big">${esc(it.name)}</div><div class="muted">${esc(it.amounts.join(" + "))}</div><div class="small muted">For ${esc(it.from.join(", "))}</div></div>
+        <div class="two"><button class="btn ghost" data-act="cardA" data-v="have">Have it</button><button class="btn" data-act="cardA" data-v="need">Need it</button></div>
+        ${S.cardA > 0 ? `<button class="btn ghost" data-act="cardA-back">Back one</button>` : ""}`;
+    }
+  }
+  if (st === 2) body = `<p class="muted">Tap only what's running low.</p><div class="list">${D.essentials.map(e => `<button class="li" data-act="ess" data-name="${esc(e)}"><span class="tick ${S.essentials.includes(e) ? "on" : ""}">${S.essentials.includes(e) ? "&#10003;" : ""}</span><div class="grow name">${esc(e)}</div>${storeTag(storeFor(norm(e)))}</button>`).join("")}</div>`;
+  if (st === 3) body = `<p class="muted">Things for the little one, or anything else this week.</p>${extrasBlock()}`;
+  if (st === 4) body = sendBlock();
+  return `<div class="wrap stack">
+    <div class="steps">${STEPS_A.map((_, i) => `<span class="${i <= st ? "done" : ""}"></span>`).join("")}</div>
+    <div class="label">Step ${st + 1} of 5</div><h1>${STEPS_A[st]}</h1>${body}</div>
+    <div class="sticky-foot"><div class="two">
+      <button class="btn ghost" data-act="stepA" data-d="-1" ${st === 0 ? "disabled" : ""}>Back</button>
+      <button class="btn" data-act="stepA" data-d="1" ${st === 4 ? "disabled" : ""}>${st === 4 ? "Done" : "Next: " + STEPS_A[st + 1]}</button>
+    </div></div>`;
+}
+
+// ---------- Variant B: one list ----------
+function renderB() {
+  const items = recipeItems(), lines = orderLines();
+  const w = lines.filter(l => l.store === "walmart").length, a = lines.filter(l => l.store === "amazon").length;
+  const recs = S.recipes.map(id => RECIPES[id]);
+  return `<div class="wrap stack">
+    <div><div class="label">Saturday order</div><h1>This week</h1></div>
+    <div class="row">${recs.map(r => `<button class="chip on" data-act="recipe" data-id="${r.id}">${esc(r.name)} &times;</button>`).join("")}
+      <button class="chip" data-act="sheetB">+ Add recipe</button></div>
+    <div class="row" style="justify-content:space-between"><h2>Groceries</h2><span class="small muted">Tap what you already have</span></div>
+    ${items.length ? `<div class="list">${items.map(i => `<button class="li ${S.have[i.key] ? "have" : ""}" data-act="have" data-key="${esc(i.key)}">
+      <span class="tick ${S.have[i.key] ? "on" : ""}">${S.have[i.key] ? "&#10003;" : ""}</span>
+      <div class="grow"><div class="name">${esc(i.name)}</div><div class="small muted">${esc(i.amounts.join(" + "))} · ${esc(i.from.join(", "))}</div></div>${storeTag(storeFor(i.key))}</button>`).join("")}</div>`
+      : `<p class="muted">Add a recipe and its ingredients land here.</p>`}
+    <button class="row" data-act="essOpenB" style="border:0;background:none;padding:0;justify-content:space-between;width:100%"><h2>Essentials</h2><span class="small muted">${S.essentials.length} needed · ${S.essOpenB ? "Hide" : "Show all " + D.essentials.length}</span></button>
+    ${S.essOpenB ? `<div class="pill-grid">${D.essentials.map(e => `<button class="chip ${S.essentials.includes(e) ? "on" : ""}" data-act="ess" data-name="${esc(e)}">${esc(e)}</button>`).join("")}</div>`
+      : (S.essentials.length ? `<div class="small">${S.essentials.map(esc).join(", ")}</div>` : "")}
+    <h2>Anything else</h2>${extrasBlock()}
+    <h2>Send</h2>${sendBlock()}
+  </div>
+  <div class="sticky-foot"><div class="row" style="justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px">
+    <span><b>${w}</b> Walmart · <b>${a}</b> Amazon</span><span class="small muted">${items.length - items.filter(i => !S.have[i.key]).length} at home</span></div></div>
+  ${S.sheetB ? `<div class="sheet" data-act="sheetB-close"><div data-stop="1"><div class="row" style="justify-content:space-between"><h2>Add a recipe</h2><button class="btn" data-act="sheetB-close">Done</button></div>${collectionChips(S.colC, "colC")}${recipePicker(S.colC)}</div></div>` : ""}`;
+}
+
+// ---------- Variant C: tabs ----------
+function renderC() {
+  const items = recipeItems(), lines = orderLines(), t = S.tabC;
+  let body = "";
+  if (t === "plan") body = `<h1>Plan the week</h1>${collectionChips(S.colC, "colC")}
+    <div class="grid">${D.recipes.filter(r => S.colC === "All" || r.cols.includes(S.colC)).map(r => `<button class="tile ${S.recipes.includes(r.id) ? "on" : ""}" data-act="recipe" data-id="${r.id}">${r.thumb ? `<img src="${r.thumb}" alt="">` : `<div class="ph">${initials(r.name)}</div>`}<div class="t">${S.recipes.includes(r.id) ? "&#10003; " : ""}${esc(r.name)}</div></button>`).join("")}</div>`;
+  if (t === "check") body = `<h1>What's at home?</h1><p class="muted small">Grouped by recipe. Tap anything you already have. Shared ingredients show under each recipe.</p>` +
+    (S.recipes.length ? S.recipes.map(id => { const r = RECIPES[id]; const keys = [...new Set(r.ings.map(i => norm(i.n)))];
+      return `<div class="row">${thumb(r)}<h2 style="flex:1;min-width:0">${esc(r.name)}</h2></div><div class="list">${keys.map(k => { const it = items.find(x => x.key === k); return `<button class="li ${S.have[k] ? "have" : ""}" data-act="have" data-key="${esc(k)}"><span class="tick ${S.have[k] ? "on" : ""}">${S.have[k] ? "&#10003;" : ""}</span><div class="grow"><div class="name">${esc(it.name)}</div>${it.from.length > 1 ? `<div class="small muted">Also in ${esc(it.from.filter(f => f !== r.name).join(", "))}</div>` : ""}</div></button>`; }).join("")}</div>`; }).join("")
+      : `<p class="muted">Pick recipes on the Plan tab first.</p>`);
+  if (t === "ess") body = `<h1>Essentials</h1><p class="muted small">Tap what's low. Tap again to undo.</p><div class="pill-grid">${D.essentials.map(e => `<button class="chip ${S.essentials.includes(e) ? "on" : ""}" data-act="ess" data-name="${esc(e)}">${esc(e)}</button>`).join("")}</div><h2>Anything else</h2>${extrasBlock()}`;
+  if (t === "send") body = `<h1>Fill the carts</h1>${sendBlock()}`;
+  const tab = (k, label, n) => `<button class="${t === k ? "on" : ""}" data-act="tabC" data-tab="${k}"><span class="count">${n}</span>${label}</button>`;
+  return `<div class="wrap stack" style="padding-bottom:190px">${body}</div>
+    <nav class="tabs">${tab("plan", "Recipes", S.recipes.length)}${tab("check", "At home", items.filter(i => S.have[i.key]).length + "/" + items.length)}${tab("ess", "Essentials", S.essentials.length + S.extras.length)}${tab("send", "Carts", lines.length)}</nav>`;
+}
+
+// ---------- wiring ----------
+function current() { const h = location.hash.slice(1); return VARIANTS.find(v => v.key === h) || VARIANTS[0]; }
+function render(keepFocus) {
+  const v = current(), app = document.getElementById("app");
+  const focused = document.activeElement && document.activeElement.id === "extraq";
+  const caret = focused ? document.activeElement.selectionStart : null;
+  app.innerHTML = v.key === "a" ? renderA() : v.key === "b" ? renderB() : renderC();
+  document.getElementById("vlabel").textContent = `${v.key.toUpperCase()} (${v.name})`;
+  const sp = document.getElementById("statepanel");
+  if (!sp.hidden) sp.textContent = JSON.stringify({ recipes: S.recipes.map(id => RECIPES[id].name), alreadyHave: Object.keys(S.have).filter(k => S.have[k]), essentials: S.essentials, extras: S.extras, order: orderLines() }, null, 2);
+  if (focused) { const q = document.getElementById("extraq"); if (q) { q.focus(); q.setSelectionRange(caret, caret); } }
+}
+function go(d) { const i = VARIANTS.indexOf(current()); location.hash = VARIANTS[(i + d + VARIANTS.length) % VARIANTS.length].key; }
+window.addEventListener("hashchange", () => { window.scrollTo(0, 0); render(); });
+document.getElementById("prev").onclick = () => go(-1);
+document.getElementById("next").onclick = () => go(1);
+document.getElementById("statebtn").onclick = () => { const sp = document.getElementById("statepanel"); sp.hidden = !sp.hidden; render(); };
+document.getElementById("resetbtn").onclick = () => { S = fresh(); render(); };
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1);
+});
+document.addEventListener("input", e => { if (e.target.id === "extraq") render(); });
+document.getElementById("app").addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  if (el.dataset.act === "sheetB-close" && e.target.closest("[data-stop]") && !e.target.closest("button")) return;
+  const a = el.dataset.act;
+  if (a === "recipe") toggle(S.recipes, el.dataset.id);
+  if (a === "colC") S.colC = el.dataset.col;
+  if (a === "have") S.have[el.dataset.key] = !S.have[el.dataset.key];
+  if (a === "ess") toggle(S.essentials, el.dataset.name);
+  if (a === "extra-add") { S.extras.push(el.dataset.name); const q = document.getElementById("extraq"); if (q) q.value = ""; }
+  if (a === "extra-del") toggle(S.extras, el.dataset.name);
+  if (a === "stepA") { S.stepA = Math.max(0, Math.min(4, S.stepA + Number(el.dataset.d))); if (S.stepA === 1) S.cardA = 0; window.scrollTo(0, 0); }
+  if (a === "cardA") { const it = recipeItems()[S.cardA]; S.have[it.key] = el.dataset.v === "have"; S.cardA++; }
+  if (a === "cardA-back") S.cardA = Math.max(0, S.cardA - 1);
+  if (a === "sheetB") S.sheetB = true;
+  if (a === "sheetB-close") S.sheetB = false;
+  if (a === "essOpenB") S.essOpenB = !S.essOpenB;
+  if (a === "tabC") { S.tabC = el.dataset.tab; window.scrollTo(0, 0); }
+  if (a === "send") { const u = document.getElementById("url-" + el.dataset.store); if (u) u.hidden = false; return; }
+  render();
+});
+// Start in a realistic state: two of the household's recipes already picked.
+S.recipes = D.recipes.filter(r => r.cols.includes("Meal Prep")).slice(0, 2).map(r => r.id);
+if (S.recipes.length < 2) S.recipes = D.recipes.slice(0, 2).map(r => r.id);
+render();
+</script>
