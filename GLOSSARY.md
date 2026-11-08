@@ -29,8 +29,12 @@ A dish the household cooks: a name, its ingredients with amounts, and optional s
 _Avoid_: Meal
 
 **Ingredient**:
-Something a recipe needs, with an amount. Adding the recipe to a grocery list turns each ingredient into an item or adds to an existing one.
+A grocery a recipe needs, with an amount and an optional preparation. Adding the recipe to a grocery list turns each ingredient into an item for its grocery, or adds to an existing one.
 _Avoid_: Component
+
+**Preparation**:
+How a recipe wants an ingredient readied, such as diced, minced or shredded. It belongs to the recipe only and never appears on a grocery list, so "1 onion, diced" adds Onion.
+_Avoid_: Prep note, cut, style
 
 **Catalog**:
 The household's set of groceries, the things it buys. Grocery lists and recipes point into it, so a grocery's details apply everywhere it appears.
