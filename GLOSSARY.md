@@ -49,5 +49,5 @@ One specific offering a store sells, such as a particular brand and size of deli
 _Avoid_: SKU, store item, listing
 
 **Weekly order**:
-The household's Saturday grocery order. Pinillalist fills the store carts (mostly Walmart, sometimes Amazon) from grocery lists, and a person checks out on the store's site.
+The household's Saturday grocery order. Each person can work through it on their own phone at the same time, and each fills the household's shared store carts (mostly Walmart, sometimes Amazon). The store cart combines them, and a person checks out on the store's site.
 _Avoid_: Purchase, checkout, online order
