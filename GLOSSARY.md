@@ -17,7 +17,7 @@ A standing list of groceries the household always keeps on hand, such as toilet 
 _Avoid_: Staples, pantry list, inventory
 
 **Stock check**:
-The pass before a weekly order where someone marks each item as "have it" or "need it." Only items marked "need it" go into the weekly order.
+The pass before a weekly order where someone checks each item's total amount against what's at home and marks it "have it", "need all of it", or "need some of it" with the amount to buy. Only needed amounts go into the weekly order.
 _Avoid_: Pantry check, review, inventory
 
 **Item**:
