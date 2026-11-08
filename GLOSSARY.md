@@ -21,7 +21,7 @@ The pass before a weekly order where someone checks each item's total amount aga
 _Avoid_: Pantry check, review, inventory
 
 **Item**:
-One thing to buy on a grocery list, with an amount. When two recipes need the same thing, they share one item that records both recipes.
+One grocery to buy on a grocery list, with a total amount. When two recipes need the same grocery, they share one item whose amount is the sum of their buying amounts, and it records both recipes.
 _Avoid_: Entry, line, product
 
 **Recipe**:
@@ -29,8 +29,12 @@ A dish the household cooks: a name, its ingredients with amounts, and optional s
 _Avoid_: Meal
 
 **Ingredient**:
-A grocery a recipe needs, with an amount and an optional preparation. Adding the recipe to a grocery list turns each ingredient into an item for its grocery, or adds to an existing one.
+A grocery a recipe needs. It has a cooking amount ("1 cup"), an optional preparation ("diced"), and a buying amount in the grocery's own unit ("1 onion"). Adding the recipe to a grocery list adds its buying amount to the item for that grocery.
 _Avoid_: Component
+
+**Buying amount**:
+How much of a grocery an ingredient needs, in the unit the household counts at home and buys in (onions, not cups). Set once per recipe.
+_Avoid_: Shopping quantity, converted amount
 
 **Preparation**:
 How a recipe wants an ingredient readied, such as diced, minced or shredded. It belongs to the recipe only and never appears on a grocery list, so "1 onion, diced" adds Onion.
