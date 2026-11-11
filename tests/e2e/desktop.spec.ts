@@ -41,7 +41,7 @@ test("picked recipes are listed beside the grid and every collection chip is vis
   await expectNoSidewaysScroll(page);
 });
 
-test("Back and Next are centered on every step, above the recipes on Pick recipes and under the content after", async ({ page }) => {
+test("Back and Next are centered on every step, pinned to the bottom on Pick recipes and under the content after", async ({ page }) => {
   await login(page);
   const foot = page.locator(".sticky-foot");
   const body = page.locator(".step-body");
@@ -55,12 +55,21 @@ test("Back and Next are centered on every step, above the recipes on Pick recipe
     return { top: first.y, bottom: first.y + first.height, bodyTop: b.y, bodyBottom: b.y + b.height };
   };
 
-  // Pick recipes: no Back button, and Next sits above the grid and stays on screen while scrolling.
+  // Pick recipes: no Back button, and Next sticks to the bottom of the window. A short window makes the grid scroll.
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
-  const pick = await place();
-  expect(pick.bottom).toBeLessThanOrEqual(pick.bodyTop);
+  await page.setViewportSize({ width: 1280, height: 420 });
+  const nextButton = page.getByRole("button", { name: "Next: Stock check" });
+  await place();
+  const pinned = (await nextButton.boundingBox())!;
+  expect(pinned.y + pinned.height).toBeGreaterThan(420 - 40);
+  expect(pinned.y + pinned.height).toBeLessThanOrEqual(420);
+  // At the end of the page the last row of recipes ends above the bar, so nothing stays hidden under it.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await expect(page.getByRole("button", { name: "Next: Stock check" })).toBeInViewport();
+  await expect(nextButton).toBeInViewport();
+  const tiles = page.locator(".grid .tile");
+  const lastTile = (await tiles.last().boundingBox())!;
+  expect(lastTile.y + lastTile.height).toBeLessThanOrEqual((await foot.boundingBox())!.y);
+  await page.setViewportSize({ width: 1280, height: 800 });
 
   for (const step of ["Stock check", "Anything else"]) {
     await page.getByRole("tab", { name: step }).click();
