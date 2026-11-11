@@ -89,76 +89,82 @@ export function RecipePage({ id }: { id: number }) {
         </Link>
       }
     >
-      {recipe.photo && <img className="hero" src={photoUrl(recipe.photo)!} alt="" />}
-      {cols.length > 0 && (
-        <div className="row">
-          {cols.map((c) => (
-            <span key={c.id} className="badge">
-              {c.name}
-            </span>
-          ))}
-        </div>
-      )}
-      {facts.length > 0 && <p className="muted">{facts.join(" · ")}</p>}
-      <h2>Ingredients</h2>
-      {needAmounts > 0 && (
-        <p className="note">
-          {needAmounts} ingredient{needAmounts === 1 ? " has" : "s have"} no buying amount yet. Edit the recipe to add them, or set them during
-          the stock check.
-        </p>
-      )}
-      <div className="list">
-        {recipe.ingredients.map((row) =>
-          row.kind === "heading" ? (
-            <div key={row.id} className="li heading">
-              <span className="label">{row.text}</span>
-            </div>
-          ) : (
-            <div key={row.id} className="li">
-              <span className="grow">
-                {row.cookingAmount && <strong>{row.cookingAmount} </strong>}
-                <Link href={`/catalog/${row.groceryId}`}>{row.groceryName}</Link>
-                {row.preparation && <span className="muted">, {row.preparation}</span>}
-              </span>
-              {row.buyingAmount !== null ? (
-                <span className="badge" title="Buying amount">
-                  {formatBuyingAmount(row.buyingAmount, groceryById.get(row.groceryId)?.unit ?? "", row.groceryName)}
+      <div className="stack recipe-cols">
+        <div className="stack">
+          {recipe.photo && <img className="hero" src={photoUrl(recipe.photo)!} alt="" />}
+          {cols.length > 0 && (
+            <div className="row">
+              {cols.map((c) => (
+                <span key={c.id} className="badge">
+                  {c.name}
                 </span>
-              ) : (
-                <span className="badge warn">no buying amount</span>
-              )}
+              ))}
             </div>
-          ),
-        )}
-      </div>
-      {recipe.steps.length > 0 && (
-        <>
-          <h2>Steps</h2>
-          <ol className="steps-list">
-            {recipe.steps.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ol>
-        </>
-      )}
-      {recipe.note && (
-        <>
-          <h2>Note</h2>
-          <p style={{ whiteSpace: "pre-wrap" }}>{recipe.note}</p>
-        </>
-      )}
-      {(recipe.sourceName || recipe.sourceUrl) && (
-        <p className="small muted">
-          Source:{" "}
-          {recipe.sourceUrl ? (
-            <a href={/^https?:/.test(recipe.sourceUrl) ? recipe.sourceUrl : `https://${recipe.sourceUrl}`} target="_blank" rel="noopener noreferrer">
-              {recipe.sourceName || recipe.sourceUrl}
-            </a>
-          ) : (
-            recipe.sourceName
           )}
-        </p>
-      )}
+          {facts.length > 0 && <p className="muted">{facts.join(" · ")}</p>}
+          <h2>Ingredients</h2>
+          {needAmounts > 0 && (
+            <p className="note">
+              {needAmounts} ingredient{needAmounts === 1 ? " has" : "s have"} no buying amount yet. Edit the recipe to add them, or set them during
+              the stock check.
+            </p>
+          )}
+          <div className="list">
+            {recipe.ingredients.map((row) =>
+              row.kind === "heading" ? (
+                <div key={row.id} className="li heading">
+                  <span className="label">{row.text}</span>
+                </div>
+              ) : (
+                <div key={row.id} className="li">
+                  <span className="grow">
+                    {row.cookingAmount && <strong>{row.cookingAmount} </strong>}
+                    <Link href={`/catalog/${row.groceryId}`}>{row.groceryName}</Link>
+                    {row.preparation && <span className="muted">, {row.preparation}</span>}
+                  </span>
+                  {row.buyingAmount !== null ? (
+                    <span className="badge" title="Buying amount">
+                      {formatBuyingAmount(row.buyingAmount, groceryById.get(row.groceryId)?.unit ?? "", row.groceryName)}
+                    </span>
+                  ) : (
+                    <span className="badge warn">no buying amount</span>
+                  )}
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+        <div className="stack">
+          {recipe.steps.length > 0 && (
+            <>
+              <h2>Steps</h2>
+              <ol className="steps-list">
+                {recipe.steps.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ol>
+            </>
+          )}
+          {recipe.note && (
+            <>
+              <h2>Note</h2>
+              <p style={{ whiteSpace: "pre-wrap" }}>{recipe.note}</p>
+            </>
+          )}
+          {(recipe.sourceName || recipe.sourceUrl) && (
+            <p className="small muted">
+              Source:{" "}
+              {recipe.sourceUrl ? (
+                <a href={/^https?:/.test(recipe.sourceUrl) ? recipe.sourceUrl : `https://${recipe.sourceUrl}`} target="_blank" rel="noopener noreferrer">
+                  {recipe.sourceName || recipe.sourceUrl}
+                </a>
+              ) : (
+                recipe.sourceName
+              )}
+            </p>
+          )}
+        </div>
+      </div>
     </Page>
   );
 }
@@ -289,6 +295,7 @@ export function RecipeEditPage({ id }: { id: number | null }) {
   return (
     <Page
       title={id === null ? "New recipe" : "Edit recipe"}
+      width="medium"
       back={
         <Link className="btn plain" href={id === null ? "/recipes" : `/recipes/${id}`}>
           ← Cancel
@@ -364,7 +371,7 @@ export function RecipeEditPage({ id }: { id: number | null }) {
           {rows.map((row, i) => (
             <div key={row.key} className="ing-row">
               {row.kind === "heading" ? (
-                <label className="field full">
+                <label className="field full heading-field">
                   <span>Section heading</span>
                   <input type="text" value={row.text} onChange={(e) => update(row.key, { text: e.target.value })} placeholder="For the sauce" />
                 </label>

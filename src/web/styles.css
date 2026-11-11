@@ -157,3 +157,109 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .empty { text-align: center; padding: 32px 16px; color: var(--muted); }
 .stack > .btn.plain { align-self: flex-start; }
 .stack > form > .btn.plain { padding-left: 0; }
+
+/* Parts that only show in the desktop layout. */
+.tabbar .brand, .tabbar .side-foot, .steps .step-name { display: none; }
+.li.on { background: var(--accent-soft); }
+
+/* Desktop: a sidebar replaces the tab bar and screens use the width.
+   The breakpoint matches useDesktop() in components.tsx. */
+@media (min-width: 900px) {
+  :root { --tabbar: 0px; --side: 232px; }
+  body { padding-left: var(--side); }
+  h1 { font-size: 2rem; }
+  .wrap { max-width: 1240px; padding: 32px 40px 56px; }
+  .wrap.medium > * { max-width: 920px; }
+  .stack { gap: 16px; }
+  .stack.tight { gap: 6px; }
+
+  .tabbar {
+    top: 0; right: auto; width: var(--side); border-top: 0; border-right: 1px solid var(--line);
+    padding: 28px 12px 16px; display: flex; flex-direction: column; gap: 24px;
+  }
+  .tabbar .brand { display: block; padding: 0 12px; font-family: var(--display); font-weight: 800; font-size: 1.4rem; letter-spacing: -0.02em; color: var(--accent); }
+  .tabbar nav { max-width: none; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+  .tabbar a { flex-direction: row; justify-content: flex-start; gap: 12px; height: 44px; padding: 0 12px; border-radius: 10px; font-size: 1rem; }
+  .tabbar a.on { background: var(--accent-soft); }
+  .tabbar .side-foot { display: block; margin-top: auto; padding: 0 8px; }
+  .toast { left: calc(50% + var(--side) / 2); }
+
+  .chips { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
+  .wrap > input[type=search], .pick input[type=search], .toolbar input[type=search] { max-width: 380px; }
+  .toolbar { gap: 20px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+  .tile .t { padding: 10px 12px; font-size: 1rem; }
+  .panel > .row > h2 { font-size: 1.4rem; font-weight: 800; }
+
+  /* Weekly order */
+  .steps { gap: 8px; margin-block: 10px 20px; }
+  .steps button { height: auto; border-radius: 0; background: none; border-top: 4px solid var(--line); padding: 8px 0 0; text-align: left; font-weight: 700; font-size: 0.9rem; color: var(--muted); }
+  .steps button.done { background: none; border-top-color: var(--accent); color: var(--ink); }
+  .steps .step-name { display: inline; }
+  .order.narrow-step > .step-body, .order.narrow-step > .sticky-foot > div { width: 100%; max-width: 640px; margin-inline: auto; }
+  .sticky-foot { position: sticky; bottom: 0; left: auto; right: auto; padding: 24px 0 16px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
+  .sticky-foot > div { max-width: none; }
+  .sticky-foot .row { justify-content: flex-end; }
+  .sticky-foot .btn.grow { flex: 0 1 320px; }
+  .pick { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+  .chosen { position: sticky; top: 24px; max-height: calc(100vh - 140px); overflow-y: auto; }
+  .cart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+  .cart-grid > :only-child { max-width: 560px; }
+  .step-body > .btn.danger { align-self: flex-start; }
+
+  /* Recipes */
+  .recipe-cols { display: grid; grid-template-columns: minmax(320px, 5fr) 7fr; gap: 40px; align-items: start; }
+  .steps-list { gap: 14px; font-size: 1.05rem; line-height: 1.55; max-width: 68ch; }
+  .ing-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px 10px; align-items: end; }
+  .ing-row .full { grid-column: auto; }
+  .ing-row .heading-field { grid-column: 1 / 5; }
+  .ing-row > .row { flex-wrap: nowrap; }
+
+  /* Catalog */
+  .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: clip; min-width: 0; }
+  .table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.95rem; }
+  .table th:nth-child(1) { width: 26%; }
+  .table th:nth-child(2) { width: 84px; }
+  .table th:nth-child(3) { width: 150px; }
+  .table th:nth-child(5) { width: 124px; }
+  .table th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 0; background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .table th button { width: 100%; border: 0; background: none; }
+  .table th button, .table th.label { text-align: left; padding: 10px 12px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--muted); }
+  .table th[aria-sort] button { color: var(--ink); }
+  .table td { padding: 10px 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .table tbody tr:last-child td { border-bottom: 0; }
+  .table tbody tr { cursor: pointer; }
+  .table tbody tr.on { background: var(--accent-soft); }
+  .table td a { color: inherit; font-weight: 700; text-decoration: none; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 7; width: min(420px, calc(100vw - var(--side)));
+    overflow-y: auto; padding: 24px; background: var(--bg); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgb(0 0 0 / 0.14);
+  }
+  .dup { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: center; }
+  .dup .stack.tight { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; }
+
+  /* Lists */
+  .lists-split { display: grid; grid-template-columns: 300px minmax(0, 640px); gap: 40px; align-items: start; }
+}
+
+/* Narrow desktop windows: keep two recipe tiles beside the picked list. */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .pick { grid-template-columns: minmax(0, 1fr) 240px; }
+  .pick .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* Wide enough for the grocery panel to sit beside the table instead of over it. */
+@media (min-width: 1280px) {
+  .split.open { grid-template-columns: minmax(0, 1fr) 400px; }
+  .drawer { position: sticky; top: 16px; z-index: auto; width: auto; max-height: calc(100vh - 32px); padding: 0 4px 0 0; background: none; border: 0; box-shadow: none; }
+}
+
+@media (hover: hover) {
+  a.li:hover, button.li:hover, .table tbody tr:hover:not(.on) { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+  .tile:hover { border-color: var(--line); }
+  .tile.on:hover { border-color: var(--accent); }
+  .tabbar a:hover { color: var(--ink); }
+  .tabbar a.on:hover { color: var(--accent); }
+  .chip:not(.on):hover { border-color: var(--muted); }
+}

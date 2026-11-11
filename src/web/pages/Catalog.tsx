@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { parseProductLink } from "../../shared/links.ts";
 import { STORE_NAMES, type Grocery } from "../../shared/types.ts";
 import { api } from "../api.ts";
-import { Page, StoreBadge, productLabel, productUrl, toast } from "../components.tsx";
+import { Page, StoreBadge, productLabel, productUrl, toast, useDesktop } from "../components.tsx";
 import { useData } from "../data.tsx";
 
 type Usage = Record<number, { recipes: number; lists: number }>;
@@ -29,11 +29,35 @@ interface Suggestion {
   b: Grocery;
 }
 
-export function CatalogPage() {
+type SortKey = "name" | "unit" | "usage" | "product";
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "name", label: "Grocery" },
+  { key: "unit", label: "Unit" },
+  { key: "usage", label: "Used in" },
+  { key: "product", label: "Product" },
+];
+
+/** Sorts groceries for the desktop table. Empty units and missing products go last either way. */
+function sortGroceries(list: Grocery[], key: SortKey, descending: boolean, usage: Usage): Grocery[] {
+  const text = (g: Grocery) => (key === "unit" ? g.unit : key === "product" ? (g.product ? productLabel(g.product) : "") : g.name);
+  const uses = (g: Grocery) => (usage[g.id]?.recipes ?? 0) + (usage[g.id]?.lists ?? 0);
+  const flip = descending ? -1 : 1;
+  return [...list].sort((a, b) => {
+    if (key === "usage") return flip * (uses(b) - uses(a)) || a.name.localeCompare(b.name);
+    const [x, y] = [text(a), text(b)];
+    if (!x !== !y) return x ? -1 : 1;
+    return flip * x.localeCompare(y) || a.name.localeCompare(b.name);
+  });
+}
+
+export function CatalogPage({ selectedId }: { selectedId?: number }) {
   const { groceries } = useData();
+  const desktop = useDesktop();
+  const [, navigate] = useLocation();
   const usage = useUsage();
   const [query, setQuery] = useState("");
   const [onlyUnlinked, setOnlyUnlinked] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: "name", descending: false });
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   useEffect(() => {
     api.get<Suggestion[]>("/api/merge-suggestions").then(setSuggestions).catch(() => {});
@@ -43,8 +67,8 @@ export function CatalogPage() {
   const shown = groceries.filter((g) => (!q || g.name.toLowerCase().includes(q)) && (!onlyUnlinked || !g.product));
   const linked = groceries.filter((g) => g.product).length;
 
-  return (
-    <Page title="Catalog">
+  const intro = (
+    <>
       <p className="muted">
         {groceries.length} groceries, {linked} linked to a product.
       </p>
@@ -56,11 +80,80 @@ export function CatalogPage() {
           to merge or keep apart →
         </Link>
       )}
-      <input type="search" placeholder="Search groceries" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search groceries" />
-      <label className="check">
-        <input type="checkbox" checked={onlyUnlinked} onChange={(e) => setOnlyUnlinked(e.target.checked)} />
-        Only groceries without a product
-      </label>
+    </>
+  );
+  const search = <input type="search" placeholder="Search groceries" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search groceries" />;
+  const unlinkedOnly = (
+    <label className="check">
+      <input type="checkbox" checked={onlyUnlinked} onChange={(e) => setOnlyUnlinked(e.target.checked)} />
+      Only groceries without a product
+    </label>
+  );
+
+  if (desktop) {
+    const rows = sortGroceries(shown, sort.key, sort.descending, usage);
+    return (
+      <Page title="Catalog">
+        {intro}
+        <div className="toolbar row">
+          {search}
+          {unlinkedOnly}
+          {shown.length !== groceries.length && <span className="muted small">{shown.length} shown</span>}
+        </div>
+        <div className={`split${selectedId === undefined ? "" : " open"}`}>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  {COLUMNS.map((c) => {
+                    const on = sort.key === c.key;
+                    return (
+                      <th key={c.key} aria-sort={on ? (sort.descending ? "descending" : "ascending") : undefined}>
+                        <button onClick={() => setSort({ key: c.key, descending: on && !sort.descending })}>
+                          {c.label}
+                          <span aria-hidden="true">{on ? (sort.descending ? " ↓" : " ↑") : ""}</span>
+                        </button>
+                      </th>
+                    );
+                  })}
+                  <th className="label">Store</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((g) => (
+                  <tr key={g.id} className={g.id === selectedId ? "on" : ""} onClick={() => navigate(`/catalog/${g.id}`)}>
+                    <td>
+                      <Link href={`/catalog/${g.id}`} onClick={(e) => e.stopPropagation()}>
+                        {g.name}
+                      </Link>
+                    </td>
+                    <td>{g.unit}</td>
+                    <td>{usageText(usage[g.id])}</td>
+                    <td>{g.product ? productLabel(g.product) : <span className="muted">None</span>}</td>
+                    <td>
+                      <StoreBadge product={g.product} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length === 0 && <p className="empty">No groceries match.</p>}
+          </div>
+          {selectedId !== undefined && (
+            <aside className="drawer" aria-label="Grocery details">
+              <GroceryPage key={selectedId} id={selectedId} embedded />
+            </aside>
+          )}
+        </div>
+      </Page>
+    );
+  }
+
+  return (
+    <Page title="Catalog">
+      {intro}
+      {search}
+      {unlinkedOnly}
       <div className="list">
         {shown.map((g) => (
           <Link key={g.id} className="li" href={`/catalog/${g.id}`}>
@@ -84,7 +177,7 @@ export function CatalogPage() {
   );
 }
 
-export function GroceryPage({ id }: { id: number }) {
+export function GroceryPage({ id, embedded = false }: { id: number; embedded?: boolean }) {
   const [, navigate] = useLocation();
   const { groceryById, groceries, setGrocery, reload } = useData();
   const usage = useUsage();
@@ -108,7 +201,7 @@ export function GroceryPage({ id }: { id: number }) {
     setLink("");
   }, [grocery]);
 
-  if (!grocery) return <main className="wrap empty">Loading…</main>;
+  if (!grocery) return embedded ? <p className="empty">Loading…</p> : <main className="wrap empty">Loading…</main>;
 
   const parsed = link.trim() ? parseProductLink(link) : null;
 
@@ -154,10 +247,18 @@ export function GroceryPage({ id }: { id: number }) {
   return (
     <Page
       title={grocery.name}
+      embedded={embedded}
       back={
         <Link className="btn plain" href="/catalog">
           ← Catalog
         </Link>
+      }
+      actions={
+        embedded && (
+          <Link className="btn plain small" href="/catalog">
+            Close
+          </Link>
+        )
       }
     >
       <p className="muted">{usageText(u)}</p>
@@ -315,6 +416,7 @@ export function DuplicatesPage() {
   return (
     <Page
       title="Possible duplicates"
+      width="medium"
       back={
         <Link className="btn plain" href="/catalog">
           ← Catalog
@@ -325,7 +427,7 @@ export function DuplicatesPage() {
       {suggestions === null && <p className="empty">Loading…</p>}
       {suggestions?.length === 0 && <p className="empty">Nothing left to review.</p>}
       {suggestions?.map((s) => (
-        <section key={s.id} className="storebox">
+        <section key={s.id} className="storebox dup">
           <div className="two">
             {[s.a, s.b].map((g) => (
               <div key={g.id}>

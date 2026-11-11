@@ -3,55 +3,79 @@ import { Link, useLocation } from "wouter";
 import { formatNumber } from "../../shared/amounts.ts";
 import type { GroceryList } from "../../shared/types.ts";
 import { api } from "../api.ts";
-import { Page, toast } from "../components.tsx";
+import { Page, toast, useDesktop } from "../components.tsx";
 import { useData } from "../data.tsx";
 
-export function ListsPage() {
+export function ListsPage({ selectedId }: { selectedId?: number }) {
   const { lists, setList } = useData();
+  const desktop = useDesktop();
   const [, navigate] = useLocation();
   const [name, setName] = useState("");
+  // On a desktop a list is always open beside the index, the first one until another is chosen.
+  const openId = desktop ? (selectedId ?? lists[0]?.id) : undefined;
+
+  const index = (
+    <div className="list">
+      {lists.map((l) => (
+        <Link key={l.id} className={`li${l.id === openId ? " on" : ""}`} href={`/lists/${l.id}`} aria-current={l.id === openId ? "page" : undefined}>
+          <span className="grow">
+            <span className="name">{l.name}</span>
+            <br />
+            <span className="small muted">
+              {l.kind === "essentials" ? "Always kept on hand" : `${l.items.filter((i) => !i.done).length} to buy`}
+              {l.isDefault && ", default list"}
+            </span>
+          </span>
+          <span className="muted">{l.items.length}</span>
+        </Link>
+      ))}
+      {lists.length === 0 && <p className="empty">No lists yet.</p>}
+    </div>
+  );
+  const addList = (
+    <form
+      className="row nowrap"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        try {
+          const l = await api.post<GroceryList>("/api/lists", { name });
+          setList(l);
+          setName("");
+          navigate(`/lists/${l.id}`);
+        } catch (err) {
+          toast((err as Error).message);
+        }
+      }}
+    >
+      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="New list name" aria-label="New list name" />
+      <button className="btn" disabled={!name.trim()}>
+        Add
+      </button>
+    </form>
+  );
+
+  if (!desktop) {
+    return (
+      <Page title="Lists">
+        {index}
+        {addList}
+      </Page>
+    );
+  }
   return (
     <Page title="Lists">
-      <div className="list">
-        {lists.map((l) => (
-          <Link key={l.id} className="li" href={`/lists/${l.id}`}>
-            <span className="grow">
-              <span className="name">{l.name}</span>
-              <br />
-              <span className="small muted">
-                {l.kind === "essentials" ? "Always kept on hand" : `${l.items.filter((i) => !i.done).length} to buy`}
-                {l.isDefault && ", default list"}
-              </span>
-            </span>
-            <span className="muted">{l.items.length}</span>
-          </Link>
-        ))}
-        {lists.length === 0 && <p className="empty">No lists yet.</p>}
+      <div className="lists-split">
+        <div className="stack">
+          {index}
+          {addList}
+        </div>
+        {openId !== undefined && <ListPage key={openId} id={openId} embedded />}
       </div>
-      <form
-        className="row nowrap"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            const l = await api.post<GroceryList>("/api/lists", { name });
-            setList(l);
-            setName("");
-            navigate(`/lists/${l.id}`);
-          } catch (err) {
-            toast((err as Error).message);
-          }
-        }}
-      >
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="New list name" aria-label="New list name" />
-        <button className="btn" disabled={!name.trim()}>
-          Add
-        </button>
-      </form>
     </Page>
   );
 }
 
-export function ListPage({ id }: { id: number }) {
+export function ListPage({ id, embedded = false }: { id: number; embedded?: boolean }) {
   const { lists, groceries, setList, reload } = useData();
   const [, navigate] = useLocation();
   const list = lists.find((l) => l.id === id);
@@ -60,7 +84,7 @@ export function ListPage({ id }: { id: number }) {
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState("");
 
-  if (!list) return <main className="wrap empty">Loading…</main>;
+  if (!list) return embedded ? <p className="empty">Loading…</p> : <main className="wrap empty">Loading…</main>;
   const essentials = list.kind === "essentials";
 
   const call = async (fn: () => Promise<GroceryList | null>) => {
@@ -77,6 +101,7 @@ export function ListPage({ id }: { id: number }) {
   return (
     <Page
       title={list.name}
+      embedded={embedded}
       back={
         <Link className="btn plain" href="/lists">
           ← Lists
