@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBuyingAmount, readNumber } from "./amounts.ts";
+import { readNumber } from "./amounts.ts";
 
 describe("readNumber", () => {
   it.each([
@@ -21,19 +21,5 @@ describe("readNumber", () => {
 
   it("returns null without a number", () => {
     expect(readNumber("Pinch")).toBeNull();
-  });
-});
-
-describe("formatBuyingAmount", () => {
-  it("counts a grocery without a unit by its name", () => {
-    expect(formatBuyingAmount(3, "", "Onion")).toBe("3 onions");
-    expect(formatBuyingAmount(1, "", "Onion")).toBe("1 onion");
-    expect(formatBuyingAmount(2, "", "Tomato")).toBe("2 tomatoes");
-  });
-
-  it("uses the unit and leaves abbreviations alone", () => {
-    expect(formatBuyingAmount(2, "lb", "Ground beef")).toBe("2 lb");
-    expect(formatBuyingAmount(2, "can", "Black beans")).toBe("2 cans");
-    expect(formatBuyingAmount(1.5, "lb", "Chicken")).toBe("1.5 lb");
   });
 });

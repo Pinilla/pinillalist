@@ -17,11 +17,11 @@ A standing list of groceries the household always keeps on hand, such as toilet 
 _Avoid_: Staples, pantry list, inventory
 
 **Stock check**:
-The pass before a weekly order where someone checks each item's total amount against what's at home and marks it "have it", "need all of it", or "need some of it" with the amount to buy. Only needed amounts go into the weekly order.
+The pass before a weekly order where someone goes through the groceries the picked recipes need, one at a time. Each grocery shows the ingredient lines that ask for it, and the person sets how many of its product to buy. The quantity starts at 1, and 0 means there's enough at home. The app never adds the amounts up or converts them.
 _Avoid_: Pantry check, review, inventory
 
 **Item**:
-One grocery to buy on a grocery list, with a total amount. When two recipes need the same grocery, they share one item whose amount is the sum of their buying amounts, and it records both recipes.
+One grocery to buy on a grocery list, with an optional amount.
 _Avoid_: Entry, line, product
 
 **Recipe**:
@@ -29,12 +29,8 @@ A dish the household cooks: a name, its ingredients with amounts, and optional s
 _Avoid_: Meal
 
 **Ingredient**:
-A grocery a recipe needs. It has a cooking amount ("1 cup"), an optional preparation ("diced"), and a buying amount in the grocery's own unit ("1 onion"). Adding the recipe to a grocery list adds its buying amount to the item for that grocery.
+A grocery a recipe needs. It has a cooking amount ("1 cup") and an optional preparation ("diced"). It doesn't say how much to buy. The person decides that in the stock check.
 _Avoid_: Component
-
-**Buying amount**:
-How much of a grocery an ingredient needs, in the unit the household counts at home and buys in (onions, not cups). Set once per recipe.
-_Avoid_: Shopping quantity, converted amount
 
 **Preparation**:
 How a recipe wants an ingredient readied, such as diced, minced or shredded. It belongs to the recipe only and never appears on a grocery list, so "1 onion, diced" adds Onion.

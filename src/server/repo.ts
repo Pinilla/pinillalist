@@ -264,7 +264,6 @@ export function getRecipes(db: Conn, ids: number[]): Recipe[] {
             groceryName: name ?? "",
             cookingAmount: i.cookingAmount,
             preparation: i.preparation,
-            buyingAmount: i.buyingAmount,
           };
     byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), row]);
   }
@@ -303,7 +302,7 @@ export function getRecipe(db: Conn, id: number): Recipe {
 
 export type IngredientInput =
   | { kind: "heading"; text: string }
-  | { kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string; buyingAmount: number | null };
+  | { kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string };
 
 export interface RecipeInput {
   name: string;
@@ -341,7 +340,6 @@ function writeRecipeParts(tx: Tx, id: number, input: RecipeInput) {
         groceryId: grocery.id,
         cookingAmount: ing.cookingAmount.trim(),
         preparation: ing.preparation.trim(),
-        buyingAmount: ing.buyingAmount,
       })
       .run();
   });
@@ -391,16 +389,6 @@ export function deleteRecipe(db: Conn, id: number): string | null {
   const recipe = getRecipe(db, id);
   db.delete(recipes).where(eq(recipes.id, id)).run();
   return recipe.photo;
-}
-
-export function setBuyingAmount(db: Conn, ingredientId: number, buyingAmount: number | null) {
-  const row = db
-    .update(ingredients)
-    .set({ buyingAmount })
-    .where(and(eq(ingredients.id, ingredientId), eq(ingredients.kind, "ingredient")))
-    .returning()
-    .get();
-  if (!row) throw new NotFound(`No ingredient ${ingredientId}`);
 }
 
 // Lists

@@ -157,9 +157,9 @@ const COUNT_UNITS: Record<string, string> = {
 };
 
 /**
- * Reads a buying amount from a cooking amount that already counts the grocery,
- * such as "2" (onions), "1 large", "1 lb" or "1 can". Returns null for cups,
- * spoons, grams, pinches and ranges, which the household fills in by hand.
+ * Reads the count and unit from a cooking amount that already counts the grocery,
+ * such as "2" (onions), "1 large", "1 lb" or "1 can". The import uses it to give
+ * each grocery a unit. Returns null for cups, spoons, grams, pinches and ranges.
  */
 export function countedAmount(cookingAmount: string): { amount: number; unit: string } | null {
   const num = readNumber(cookingAmount);

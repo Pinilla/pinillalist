@@ -75,7 +75,6 @@ export const ingredients = sqliteTable(
     groceryId: integer("grocery_id").references(() => groceries.id),
     cookingAmount: text("cooking_amount").notNull().default(""),
     preparation: text().notNull().default(""),
-    buyingAmount: real("buying_amount"),
     /** The original AnyList text, kept for reference after import. */
     raw: text().notNull().default(""),
   },

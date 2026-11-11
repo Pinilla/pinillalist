@@ -17,7 +17,7 @@ try {
   const r = importAnyList(db, data, { photosFrom: path.join(exportDir, "photos"), photosTo: config.photosDir });
   console.log(`Imported into ${config.dbFile}:
   ${r.recipes} recipes in ${r.collections} collections, ${r.photos} with photos
-  ${r.ingredients} ingredients, ${r.withBuyingAmount} with a buying amount filled in, ${r.ingredients - r.withBuyingAmount} left for the household
+  ${r.ingredients} ingredients
   ${r.groceries} groceries in the catalog
   ${r.essentials} items on the Essentials list
   ${r.suggestions} possible duplicates to review under Catalog

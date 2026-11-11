@@ -9,31 +9,26 @@ const beef: Grocery = { id: 2, name: "Ground beef", unit: "lb", product: null };
 const tp: Grocery = { id: 3, name: "Toilet paper", unit: "", product: null };
 const groceries = new Map([onion, beef, tp].map((g) => [g.id, g]));
 
-function item(g: Grocery, total: number): MergedItem {
-  return { groceryId: g.id, groceryName: g.name, unit: g.unit, total, uses: [], recipeNames: ["Chili"] };
+function item(g: Grocery): MergedItem {
+  return { groceryId: g.id, groceryName: g.name, uses: [] };
 }
 
 describe("orderLines", () => {
   it("includes needed stock items and skips the ones at home", () => {
     let state = newOrder();
-    state = answerStock(state, onion.id, { choice: "all", quantity: 1 });
-    state = answerStock(state, beef.id, { choice: "have" });
-    const lines = orderLines(state, [item(onion, 3), item(beef, 2)], groceries);
+    state = answerStock(state, onion.id, 1);
+    state = answerStock(state, beef.id, 0);
+    const lines = orderLines(state, [item(onion), item(beef)], groceries);
     expect(lines).toEqual([{ groceryId: 1, groceryName: "Onion", quantity: 1, product: walmart }]);
-  });
-
-  it("uses the product quantity, not the buying amount", () => {
-    const state = answerStock(newOrder(), onion.id, { choice: "some", buyAmount: 2, quantity: 1 });
-    expect(orderLines(state, [item(onion, 3)], groceries)[0]!.quantity).toBe(1);
   });
 
   it("adds essentials and extras, combining a grocery that appears twice", () => {
     const state = {
-      ...answerStock(newOrder(), onion.id, { choice: "all", quantity: 1 }),
+      ...answerStock(newOrder(), onion.id, 1),
       essentials: { [tp.id]: 2 },
       extras: { [onion.id]: 1 },
     };
-    const lines = orderLines(state, [item(onion, 3)], groceries);
+    const lines = orderLines(state, [item(onion)], groceries);
     expect(lines.map((l) => [l.groceryName, l.quantity])).toEqual([
       ["Onion", 2],
       ["Toilet paper", 2],
@@ -41,7 +36,7 @@ describe("orderLines", () => {
   });
 
   it("ignores answers for groceries the chosen recipes no longer need", () => {
-    const state = answerStock(newOrder(), onion.id, { choice: "all", quantity: 1 });
+    const state = answerStock(newOrder(), onion.id, 1);
     expect(orderLines(state, [], groceries)).toEqual([]);
   });
 
@@ -65,16 +60,29 @@ describe("order state", () => {
   });
 
   it("finds the first unanswered stock card", () => {
-    const merged = [item(onion, 1), item(beef, 1)];
-    const s = answerStock(newOrder(), onion.id, { choice: "have" });
+    const merged = [item(onion), item(beef)];
+    const s = answerStock(newOrder(), onion.id, 0);
     expect(firstUnanswered(s, merged)).toBe(1);
-    expect(firstUnanswered(answerStock(s, beef.id, { choice: "have" }), merged)).toBe(2);
+    expect(firstUnanswered(answerStock(s, beef.id, 0), merged)).toBe(2);
   });
 
   it("starts fresh from missing or broken saved state", () => {
     expect(loadOrder(null)).toEqual(newOrder());
     expect(loadOrder("{not json")).toEqual(newOrder());
     expect(loadOrder(JSON.stringify({ version: 0, step: 3 }))).toEqual(newOrder());
-    expect(loadOrder(JSON.stringify({ version: 1, step: 3 })).step).toBe(3);
+    expect(loadOrder(JSON.stringify({ version: 2, step: 3 })).step).toBe(3);
+  });
+
+  it("keeps the answers of an order saved before quantities replaced the three choices", () => {
+    const old = {
+      version: 1,
+      step: 1,
+      recipeIds: [4],
+      stock: { "1": { choice: "have" }, "2": { choice: "all", quantity: 2 }, "3": { choice: "some", buyAmount: 1, quantity: 3 } },
+    };
+    const s = loadOrder(JSON.stringify(old));
+    expect(s.version).toBe(2);
+    expect(s.recipeIds).toEqual([4]);
+    expect(s.stock).toEqual({ "1": 0, "2": 2, "3": 3 });
   });
 });

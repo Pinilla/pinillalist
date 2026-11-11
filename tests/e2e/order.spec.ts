@@ -30,41 +30,36 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await expect(page.getByText("2 chosen.")).toBeVisible();
   await next(page);
 
-  // 2. Stock check: Onion merges both recipes' buying amounts.
+  // 2. Stock check: one card per grocery, listing each recipe's ingredient line.
   await expect(page.getByRole("heading", { name: "Stock check" })).toBeVisible();
-  await expect(page.locator(".card .item-name")).toHaveText("Onion");
-  await expect(page.locator(".card")).toContainText("3 onions, for Chili and Tacos");
-  await page.getByRole("button", { name: "Need all of it" }).click();
-  await expect(page.locator(".card")).toContainText("Yellow onions, 3 lb bag");
-  await page.getByRole("button", { name: "Done" }).click();
-
-  await expect(page.locator(".card .item-name")).toHaveText("Ground beef");
-  await expect(page.locator(".card")).toContainText("1 lb, for Chili");
-  await page.getByRole("button", { name: "Have it" }).click();
-
-  // Cumin has no buying amount, so the card shows the cooking amount and offers to set one.
-  await expect(page.locator(".card .item-name")).toHaveText("Cumin");
-  await expect(page.locator(".card")).toContainText("Chili uses 1 tsp");
-  await page.getByRole("button", { name: "Set the buying amount" }).click();
-  await page.getByLabel(/Buying amount/).fill("1");
-  await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.locator(".card")).toContainText("1 cumin, for Chili");
-  await page.getByRole("button", { name: "Need some of it" }).click();
+  const card = page.locator(".card");
+  const quantity = card.getByRole("group", { name: "Quantity to buy" });
+  await expect(card.locator(".item-name")).toHaveText("Onion");
+  await expect(card).toContainText("Yellow onions, 3 lb bag");
+  await expect(card.locator(".uses li")).toHaveText(["2 diced, for Chili", "1, for Tacos"]);
+  await expect(quantity.getByRole("status")).toHaveText("1");
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.locator(".card")).toContainText("No product is linked yet");
-  await page.getByRole("button", { name: "Done" }).click();
 
-  await expect(page.locator(".card .item-name")).toHaveText("Tortillas");
-  await page.getByRole("button", { name: "Need all of it" }).click();
-  await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("button", { name: "Done" }).click();
+  // Taking the quantity down to 0 means there's enough at home, and the next card comes up.
+  await expect(card.locator(".item-name")).toHaveText("Ground beef");
+  await quantity.getByRole("button", { name: "Less" }).click();
+
+  await expect(card.locator(".item-name")).toHaveText("Cumin");
+  await expect(card).toContainText("No product linked");
+  await expect(card.locator(".uses li")).toHaveText(["1 tsp, for Chili"]);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  await expect(card.locator(".item-name")).toHaveText("Tortillas");
+  await quantity.getByRole("button", { name: "More" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
 
   // Summary after the last card. Change Ground beef from the summary.
   await expect(page.getByText("3 of 4 to buy.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Ground beef/ })).toContainText("Have it");
+  await expect(page.getByRole("button", { name: /Tortillas/ })).toContainText("Buy 2");
   await page.getByRole("button", { name: /Ground beef/ }).click();
-  await expect(page.locator(".card .item-name")).toHaveText("Ground beef");
-  await page.getByRole("button", { name: "Need all of it" }).click();
-  await page.getByRole("button", { name: "Done" }).click();
+  await expect(card.locator(".item-name")).toHaveText("Ground beef");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByText("4 of 4 to buy.")).toBeVisible();
   await next(page);
 

@@ -35,7 +35,6 @@ export type IngredientRow =
       groceryName: string;
       cookingAmount: string;
       preparation: string;
-      buyingAmount: number | null;
     };
 
 export interface RecipeSummary {

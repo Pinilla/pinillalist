@@ -97,7 +97,6 @@ function recipeInput(b: Record<string, unknown>): repo.RecipeInput {
         groceryName: str(r.groceryName, "groceryName"),
         cookingAmount: str(r.cookingAmount, "cookingAmount", ""),
         preparation: str(r.preparation, "preparation", ""),
-        buyingAmount: num(r.buyingAmount, "buyingAmount"),
       };
     }),
   };
@@ -266,12 +265,6 @@ export function createApp(options: AppOptions) {
     const old = repo.setRecipePhoto(db, recipeId, name);
     if (old) await unlink(path.join(photosDir, old)).catch(() => {});
     return c.json(repo.getRecipe(db, recipeId));
-  });
-
-  api.patch("/ingredients/:id", async (c) => {
-    const b = await body(c);
-    repo.setBuyingAmount(db, id(c), num(b.buyingAmount, "buyingAmount"));
-    return c.body(null, 204);
   });
 
   // Lists
