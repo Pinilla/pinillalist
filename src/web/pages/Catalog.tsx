@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { parseProductLink } from "../../shared/links.ts";
+import { LOCATIONS, locationLabel, locationRank, type LocationKey } from "../../shared/locations.ts";
 import { STORE_NAMES, type Grocery } from "../../shared/types.ts";
 import { api } from "../api.ts";
 import { Page, StoreBadge, productLabel, productUrl, toast, useDesktop } from "../components.tsx";
@@ -29,21 +30,29 @@ interface Suggestion {
   b: Grocery;
 }
 
-type SortKey = "name" | "unit" | "usage" | "product";
+type SortKey = "name" | "unit" | "location" | "usage" | "product";
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "name", label: "Grocery" },
   { key: "unit", label: "Unit" },
+  { key: "location", label: "Location" },
   { key: "usage", label: "Used in" },
   { key: "product", label: "Product" },
 ];
 
-/** Sorts groceries for the desktop table. Empty units and missing products go last either way. */
+/**
+ * Sorts groceries for the desktop table. Empty units and missing products go
+ * last either way. Locations sort in walk order, with no location last.
+ */
 function sortGroceries(list: Grocery[], key: SortKey, descending: boolean, usage: Usage): Grocery[] {
   const text = (g: Grocery) => (key === "unit" ? g.unit : key === "product" ? (g.product ? productLabel(g.product) : "") : g.name);
   const uses = (g: Grocery) => (usage[g.id]?.recipes ?? 0) + (usage[g.id]?.lists ?? 0);
   const flip = descending ? -1 : 1;
   return [...list].sort((a, b) => {
     if (key === "usage") return flip * (uses(b) - uses(a)) || a.name.localeCompare(b.name);
+    if (key === "location") {
+      if (!a.location !== !b.location) return a.location ? -1 : 1;
+      return flip * (locationRank(a.location) - locationRank(b.location)) || a.name.localeCompare(b.name);
+    }
     const [x, y] = [text(a), text(b)];
     if (!x !== !y) return x ? -1 : 1;
     return flip * x.localeCompare(y) || a.name.localeCompare(b.name);
@@ -128,6 +137,7 @@ export function CatalogPage({ selectedId }: { selectedId?: number }) {
                       </Link>
                     </td>
                     <td>{g.unit}</td>
+                    <td>{g.location ? locationLabel(g.location) : <span className="muted">None</span>}</td>
                     <td>{usageText(usage[g.id])}</td>
                     <td>{g.product ? productLabel(g.product) : <span className="muted">None</span>}</td>
                     <td>
@@ -161,6 +171,7 @@ export function CatalogPage({ selectedId }: { selectedId?: number }) {
               <span className="name">{g.name}</span>
               <br />
               <span className="small muted">
+                {g.location ? `${locationLabel(g.location)}. ` : ""}
                 {g.unit ? `Counted in ${g.unit}. ` : ""}
                 {usageText(usage[g.id])}
               </span>
@@ -184,6 +195,7 @@ export function GroceryPage({ id, embedded = false }: { id: number; embedded?: b
   const grocery = groceryById.get(id);
   const [name, setName] = useState("");
   const [unit, setUnit] = useState("");
+  const [location, setLocation] = useState<LocationKey | "">("");
   const [link, setLink] = useState("");
   const [productName, setProductName] = useState("");
   const [size, setSize] = useState("");
@@ -195,6 +207,7 @@ export function GroceryPage({ id, embedded = false }: { id: number; embedded?: b
     if (!grocery) return;
     setName(grocery.name);
     setUnit(grocery.unit);
+    setLocation(grocery.location ?? "");
     setProductName(grocery.product?.name ?? "");
     setSize(grocery.product?.size ?? "");
     setByPound(grocery.product?.soldBy === "pound");
@@ -219,7 +232,7 @@ export function GroceryPage({ id, embedded = false }: { id: number; embedded?: b
   const saveDetails = (e: React.FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      setGrocery(await api.patch<Grocery>(`/api/groceries/${id}`, { name, unit }));
+      setGrocery(await api.patch<Grocery>(`/api/groceries/${id}`, { name, unit, location: location || null }));
       toast("Saved.");
     });
   };
@@ -334,6 +347,20 @@ export function GroceryPage({ id, embedded = false }: { id: number; embedded?: b
           <span>Unit</span>
           <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Leave empty to count by name" />
         </label>
+        <label className="field">
+          <span>Location</span>
+          <select value={location} onChange={(e) => setLocation(e.target.value as LocationKey | "")}>
+            <option value="">None</option>
+            {LOCATIONS.map((l) => (
+              <option key={l.key} value={l.key}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="small muted">
+          Where it's kept at home. The stock check walks the house in this order, and groceries without a location come last.
+        </p>
         <p className="small muted">
           The unit you count at home and buy in, such as lb, can or pack. Leave it empty to count {grocery.name.toLowerCase()} one by one.
         </p>

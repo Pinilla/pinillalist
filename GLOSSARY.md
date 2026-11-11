@@ -13,12 +13,16 @@ A named list of items to buy, which members of the household tick off while shop
 _Avoid_: Shopping list, checklist, to-do
 
 **Essentials list**:
-A standing list of groceries the household always keeps on hand, such as toilet paper. Its items are never done. Each week someone marks the few that are low, and only those go into the weekly order.
+A standing list of groceries the household always keeps on hand, such as toilet paper. Its items are never done. Each week the stock check asks about each one, starting at 0, and only the low ones go into the weekly order.
 _Avoid_: Staples, pantry list, inventory
 
 **Stock check**:
-The pass before a weekly order where someone goes through the groceries the picked recipes need, one at a time. Each grocery shows the ingredient lines that ask for it, and the person sets how many of its product to buy. The quantity starts at 1, and 0 means there's enough at home. The app never adds the amounts up or converts them.
+The pass before a weekly order where someone walks the house, one location at a time, and goes through the groceries the picked recipes need and the Essentials list. Each grocery shows the ingredient lines that ask for it, and the person sets how many of its product to buy. The quantity starts at 1 for a recipe grocery and 0 for an Essential, and 0 means there's enough at home. The app never adds the amounts up or converts them.
 _Avoid_: Pantry check, review, inventory
+
+**Location**:
+Where at home the household keeps a grocery, such as Pantry or Fridge. Each grocery has at most one. The locations are a fixed list in walk order, and the stock check follows it.
+_Avoid_: Room, area, shelf
 
 **Item**:
 One grocery to buy on a grocery list, with an optional amount.

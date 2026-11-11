@@ -45,6 +45,22 @@ describe("catalog", () => {
     expect(res.status).toBe(400);
   });
 
+  it("sets and clears a grocery's location", async () => {
+    const { call } = await setup();
+    const { body: g } = await call("POST", "/api/groceries", { name: "Milk" });
+    expect(g.location).toBeNull();
+    const set = await call("PATCH", `/api/groceries/${g.id}`, { location: "fridge" });
+    expect(set.body.location).toBe("fridge");
+    expect((await call("PATCH", `/api/groceries/${g.id}`, { name: "Whole milk" })).body.location).toBe("fridge");
+    expect((await call("PATCH", `/api/groceries/${g.id}`, { location: null })).body.location).toBeNull();
+  });
+
+  it("rejects a location that isn't on the list", async () => {
+    const { call } = await setup();
+    const { body: g } = await call("POST", "/api/groceries", { name: "Milk" });
+    expect((await call("PATCH", `/api/groceries/${g.id}`, { location: "garage" })).status).toBe(400);
+  });
+
   it("refuses to rename a grocery to one that exists", async () => {
     const { call } = await setup();
     await call("POST", "/api/groceries", { name: "Onion" });

@@ -1,0 +1,1 @@
+ALTER TABLE `groceries` ADD `location` text;

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { formatNumber } from "../../shared/amounts.ts";
 import { buildCartPlan, type OrderLine } from "../../shared/carts.ts";
-import { mergeIngredients, type MergedItem } from "../../shared/merge.ts";
+import { locationLabel } from "../../shared/locations.ts";
+import { mergeIngredients } from "../../shared/merge.ts";
 import {
   STEPS,
   answerStock,
@@ -13,6 +14,7 @@ import {
   toggleRecipe,
   type OrderState,
 } from "../../shared/order.ts";
+import { buildStockCheck, type CheckItem } from "../../shared/stock.ts";
 import { STORE_NAMES, type Grocery, type Recipe } from "../../shared/types.ts";
 import { api } from "../api.ts";
 import { Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
@@ -42,9 +44,10 @@ function qtyStep(grocery: Grocery | undefined): number {
 }
 
 export function OrderPage() {
-  const { groceryById, loaded } = useData();
+  const { groceryById, lists, loaded } = useData();
   const [state, setStateRaw] = useState<OrderState>(() => loadOrder(readSaved()));
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipesFor, setRecipesFor] = useState("");
 
   const setState = (update: (s: OrderState) => OrderState) =>
     setStateRaw((s) => {
@@ -63,15 +66,25 @@ export function OrderPage() {
     let live = true;
     api
       .get<Recipe[]>(`/api/recipes?ids=${idsKey}`)
-      .then((r) => live && setRecipes(r))
+      .then((r) => {
+        if (!live) return;
+        setRecipes(r);
+        setRecipesFor(idsKey);
+      })
       .catch((err: Error) => toast(err.message));
     return () => {
       live = false;
     };
   }, [idsKey]);
 
-  const merged = useMemo(() => mergeIngredients(recipes, groceryById), [recipes, groceryById]);
-  const lines = useMemo(() => orderLines(state, merged, groceryById), [state, merged, groceryById]);
+  const essentials = useMemo(() => lists.find((l) => l.kind === "essentials")?.items ?? [], [lists]);
+  const check = useMemo(
+    () => buildStockCheck(mergeIngredients(recipes, groceryById), essentials, groceryById),
+    [recipes, essentials, groceryById],
+  );
+  // Until the picked recipes arrive, the walk would be Essentials only and then reshuffle.
+  const recipesLoading = idsKey !== "" && recipesFor !== idsKey;
+  const lines = useMemo(() => orderLines(state, check, groceryById), [state, check, groceryById]);
 
   const go = (step: number) => {
     setState((s) => ({ ...s, step: Math.max(0, Math.min(STEPS.length - 1, step)) }));
@@ -81,7 +94,7 @@ export function OrderPage() {
   if (!loaded) return <main className="wrap empty">Loading…</main>;
 
   return (
-    <main className={`wrap stack order${state.step >= 1 && state.step <= 3 ? " narrow-step" : ""}`}>
+    <main className={`wrap stack order${state.step >= 1 && state.step <= 2 ? " narrow-step" : ""}`}>
       <div>
         <div className="row between">
           <span className="label">
@@ -111,11 +124,10 @@ export function OrderPage() {
       <div className="stack step-body">
         {state.step === 0 && <PickRecipes state={state} setState={setState} />}
         {state.step === 1 && (
-          <StockCheck state={state} setState={setState} merged={merged} groceryById={groceryById} />
+          <StockCheck state={state} setState={setState} check={check} loading={recipesLoading} groceryById={groceryById} />
         )}
-        {state.step === 2 && <Essentials state={state} setState={setState} />}
-        {state.step === 3 && <AnythingElse state={state} setState={setState} />}
-        {state.step === 4 && (
+        {state.step === 2 && <AnythingElse state={state} setState={setState} />}
+        {state.step === 3 && (
           <FillCarts
             state={state}
             setState={setState}
@@ -232,52 +244,69 @@ function describeAnswer(quantity: number | undefined, grocery: Grocery | undefin
   return `Buy ${formatNumber(quantity)}${grocery?.product?.soldBy === "pound" ? " lb" : ""}`;
 }
 
-function StockCheck({ state, setState, merged, groceryById }: StepProps & { merged: MergedItem[]; groceryById: Map<number, Grocery> }) {
-  if (state.recipeIds.length === 0) {
-    return <p className="empty">No recipes picked, so there's nothing to check. Go on to the essentials.</p>;
+function StockCheck({
+  state,
+  setState,
+  check,
+  loading,
+  groceryById,
+}: StepProps & { check: CheckItem[]; loading: boolean; groceryById: Map<number, Grocery> }) {
+  if (loading) return <p className="empty">Loading the recipes…</p>;
+  if (check.length === 0) {
+    return <p className="empty">No recipes picked and no Essentials, so there's nothing to check. Go on to anything else.</p>;
   }
-  if (merged.length === 0) return <p className="empty">Loading the recipes…</p>;
 
-  const index = Math.min(state.stockIndex, merged.length - 1);
-  const allAnswered = firstUnanswered(state, merged) === merged.length;
+  const index = Math.min(state.stockIndex, check.length - 1);
+  const allAnswered = firstUnanswered(state, check) === check.length;
 
   if (state.stockReviewed && allAnswered) {
-    const buying = merged.filter((m) => (state.stock[m.groceryId] ?? 0) > 0).length;
+    const buying = check.filter((m) => (state.stock[m.groceryId] ?? 0) > 0).length;
+    const groups: { label: string; items: { item: CheckItem; i: number }[] }[] = [];
+    check.forEach((item, i) => {
+      const label = locationLabel(item.location);
+      if (groups.at(-1)?.label !== label) groups.push({ label, items: [] });
+      groups.at(-1)!.items.push({ item, i });
+    });
     return (
       <>
         <p className="muted">
-          {buying} of {merged.length} to buy. Tap an item to change it.
+          {buying} of {check.length} to buy. Tap an item to change it.
         </p>
-        <div className="list">
-          {merged.map((item, i) => {
-            const answer = state.stock[item.groceryId];
-            return (
-              <button
-                key={item.groceryId}
-                className={`li${answer === 0 ? " have" : ""}`}
-                onClick={() => setState((s) => ({ ...s, stockIndex: i, stockReviewed: false }))}
-              >
-                <span className="grow">
-                  <span className="name">{item.groceryName}</span>
-                  <br />
-                  <span className="small muted">{describeAnswer(answer, groceryById.get(item.groceryId))}</span>
-                </span>
-                <StoreBadge product={groceryById.get(item.groceryId)?.product ?? null} />
-              </button>
-            );
-          })}
-        </div>
+        {groups.map((group) => (
+          <section key={group.label} className="stack tight" aria-label={group.label}>
+            <h2>{group.label}</h2>
+            <div className="list">
+              {group.items.map(({ item, i }) => {
+                const answer = state.stock[item.groceryId];
+                return (
+                  <button
+                    key={item.groceryId}
+                    className={`li${answer === 0 ? " have" : ""}`}
+                    onClick={() => setState((s) => ({ ...s, stockIndex: i, stockReviewed: false }))}
+                  >
+                    <span className="grow">
+                      <span className="name">{item.groceryName}</span>
+                      <br />
+                      <span className="small muted">{describeAnswer(answer, groceryById.get(item.groceryId))}</span>
+                    </span>
+                    <StoreBadge product={groceryById.get(item.groceryId)?.product ?? null} />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </>
     );
   }
 
-  const item = merged[index]!;
+  const item = check[index]!;
   return (
     <StockCard
       key={item.groceryId}
       item={item}
       position={index}
-      count={merged.length}
+      count={check.length}
       grocery={groceryById.get(item.groceryId)}
       answer={state.stock[item.groceryId]}
       onBack={index > 0 ? () => setState((s) => ({ ...s, stockIndex: index - 1 })) : undefined}
@@ -285,9 +314,9 @@ function StockCheck({ state, setState, merged, groceryById }: StepProps & { merg
       onAnswer={(quantity) =>
         setState((s) => {
           const next = answerStock(s, item.groceryId, quantity);
-          const after = merged.findIndex((m, i) => i > index && next.stock[m.groceryId] === undefined);
-          const unanswered = after !== -1 ? after : firstUnanswered(next, merged);
-          return unanswered === merged.length
+          const after = check.findIndex((m, i) => i > index && next.stock[m.groceryId] === undefined);
+          const unanswered = after !== -1 ? after : firstUnanswered(next, check);
+          return unanswered === check.length
             ? { ...next, stockReviewed: true }
             : { ...next, stockIndex: unanswered, stockReviewed: false };
         })
@@ -297,9 +326,10 @@ function StockCheck({ state, setState, merged, groceryById }: StepProps & { merg
 }
 
 /**
- * One grocery in the stock check: the ingredient lines that ask for it and how
- * many of its product to buy. The quantity starts at 1, and taking it down to 0
- * means there's enough at home and moves to the next grocery.
+ * One grocery in the stock check: where to look, the ingredient lines that ask
+ * for it, and how many of its product to buy. A recipe grocery starts at 1 and
+ * an Essential at 0. Taking the quantity down to 0 means there's enough at home
+ * and moves to the next grocery.
  */
 function StockCard({
   item,
@@ -311,7 +341,7 @@ function StockCard({
   onBack,
   onSummary,
 }: {
-  item: MergedItem;
+  item: CheckItem;
   position: number;
   count: number;
   grocery: Grocery | undefined;
@@ -320,7 +350,7 @@ function StockCard({
   onBack?: () => void;
   onSummary?: () => void;
 }) {
-  const [quantity, setQuantity] = useState(answer !== undefined && answer > 0 ? answer : 1);
+  const [quantity, setQuantity] = useState(answer !== undefined && answer > 0 ? answer : item.start);
   const product = grocery?.product ?? null;
   const byPound = product?.soldBy === "pound";
 
@@ -328,18 +358,27 @@ function StockCard({
     <>
       <div className="card" aria-live="polite">
         <span className="label">
-          Item {position + 1} of {count}
+          <span className="where">{locationLabel(item.location)}</span> · Item {position + 1} of {count}
         </span>
         <div className="item-name">{item.groceryName}</div>
         <p className="muted">{product ? productLabel(product) : "No product linked. You'll add this in the store app by hand."}</p>
-        <ul className="uses">
-          {item.uses.map((use) => (
-            <li key={use.ingredientId}>
-              <strong>{use.cookingAmount || "Some"}</strong>
-              {use.preparation && ` ${use.preparation}`}, for {use.recipeName}
-            </li>
-          ))}
-        </ul>
+        {item.essential && (
+          <p className="essential">
+            <span className="badge">Essential</span>
+            {item.essential.details && <span className="small"> {item.essential.details}</span>}
+          </p>
+        )}
+        {item.uses.length > 0 && (
+          <ul className="uses">
+            {item.uses.map((use) => (
+              <li key={use.ingredientId}>
+                <strong>{use.cookingAmount || "Some"}</strong>
+                {use.preparation && ` ${use.preparation}`}, for {use.recipeName}
+              </li>
+            ))}
+          </ul>
+        )}
+        {item.uses.length === 0 && <p className="small muted">Is it running low? Leave it at 0 if there's enough.</p>}
         <div className="stack" style={{ alignItems: "center", marginTop: 8 }}>
           <div className="row" style={{ justifyContent: "center" }}>
             <span>Buy</span>
@@ -374,66 +413,6 @@ function StockCard({
         )}
       </div>
       {answer !== undefined && <p className="small muted">Answered before: {describeAnswer(answer, grocery)}</p>}
-    </>
-  );
-}
-
-function Essentials({ state, setState }: StepProps) {
-  const { lists, groceryById } = useData();
-  const essentials = lists.find((l) => l.kind === "essentials");
-  if (!essentials) return <p className="empty">There's no Essentials list yet.</p>;
-  if (essentials.items.length === 0) {
-    return (
-      <p className="empty">
-        The Essentials list is empty. <Link href={`/lists/${essentials.id}`}>Add essentials</Link>
-      </p>
-    );
-  }
-  const lowCount = essentials.items.filter((i) => state.essentials[i.groceryId]).length;
-  return (
-    <>
-      <p className="muted">Tap the ones that are low this week. {lowCount > 0 && `${lowCount} marked.`}</p>
-      <div className="list">
-        {essentials.items.map((item) => {
-          const qty = state.essentials[item.groceryId];
-          const on = qty !== undefined;
-          const grocery = groceryById.get(item.groceryId);
-          const toggle = () =>
-            setState((s) => {
-              const next = { ...s.essentials };
-              if (on) delete next[item.groceryId];
-              else next[item.groceryId] = 1;
-              return { ...s, essentials: next };
-            });
-          return (
-            <div key={item.id} className="li">
-              <button className={`tick${on ? " on" : ""}`} aria-pressed={on} aria-label={`${item.groceryName} is low`} onClick={toggle}>
-                {on ? "✓" : ""}
-              </button>
-              <button className="grow" style={{ border: 0, background: "none", textAlign: "left", padding: 0 }} onClick={toggle}>
-                <span className="name">{item.groceryName}</span>
-                {item.details && (
-                  <>
-                    <br />
-                    <span className="small muted">{item.details}</span>
-                  </>
-                )}
-              </button>
-              {on ? (
-                <Stepper
-                  value={qty}
-                  min={qtyStep(grocery)}
-                  step={qtyStep(grocery)}
-                  onChange={(n) => setState((s) => ({ ...s, essentials: { ...s.essentials, [item.groceryId]: n } }))}
-                  label={`How many ${item.groceryName}`}
-                />
-              ) : (
-                <StoreBadge product={grocery?.product ?? null} />
-              )}
-            </div>
-          );
-        })}
-      </div>
     </>
   );
 }

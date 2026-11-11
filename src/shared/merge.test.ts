@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mergeIngredients } from "./merge.ts";
 import type { Grocery, IngredientRow, Recipe } from "./types.ts";
 
-const onion: Grocery = { id: 1, name: "Onion", unit: "", product: null };
-const beef: Grocery = { id: 2, name: "Ground beef", unit: "lb", product: null };
+const onion: Grocery = { id: 1, name: "Onion", unit: "", location: null, product: null };
+const beef: Grocery = { id: 2, name: "Ground beef", unit: "lb", location: null, product: null };
 const groceries = new Map([onion, beef].map((g) => [g.id, g]));
 
 let nextId = 1;
