@@ -24,8 +24,13 @@ npm ci
 npm test
 npm run build
 
-if [ -f "$DATA/pinillalist.db" ]; then
+# The data folder is readable only by the pinillalist user, so check for the
+# database as that user. A plain [ -f ] runs as pinilla, always fails, and
+# skips the backup without saying so.
+if sudo -u pinillalist test -f "$DATA/pinillalist.db"; then
   sudo -u pinillalist env PINILLALIST_DATA="$DATA" /opt/node/bin/node scripts/backup-db.ts
+else
+  echo "No database at $DATA/pinillalist.db yet, so there's nothing to back up."
 fi
 sudo -u pinillalist env PINILLALIST_DATA="$DATA" /opt/node/bin/node scripts/migrate.ts
 
