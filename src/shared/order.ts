@@ -1,14 +1,25 @@
 import type { OrderLine } from "./carts.ts";
+import type { SubRecipeMode } from "./merge.ts";
 import type { CheckItem } from "./stock.ts";
 import type { Grocery } from "./types.ts";
 
 export const STEPS = ["Pick recipes", "Stock check", "Anything else", "Fill carts"] as const;
+
+/** What was chosen along with a picked recipe: its optional ingredients to add, and what to do about ingredients made from other recipes. */
+export interface RecipeChoice {
+  /** Ingredient ids of the optional ingredients to buy this week. */
+  optional: number[];
+  /** Ingredient id to make, buy or have. Missing means make. */
+  subRecipes: Record<string, SubRecipeMode>;
+}
 
 /** One phone's weekly order in progress. It lives in the phone's local storage, never on the server. */
 export interface OrderState {
   version: 3;
   step: number;
   recipeIds: number[];
+  /** Choices made when picking each recipe, by recipe id. */
+  choices: Record<string, RecipeChoice>;
   collectionFilter: number | null;
   /** Stock check answers, for recipe groceries and Essentials alike: grocery id to product quantity. 0 means there's enough at home. */
   stock: Record<string, number>;
@@ -28,6 +39,7 @@ export function newOrder(): OrderState {
     version: 3,
     step: 0,
     recipeIds: [],
+    choices: {},
     collectionFilter: null,
     stock: {},
     stockIndex: 0,
@@ -83,11 +95,25 @@ export function loadOrder(saved: string | null): OrderState {
 /** Picks or unpicks a recipe. Answers for groceries no chosen recipe needs any more drop out later. */
 export function toggleRecipe(state: OrderState, recipeId: number): OrderState {
   const has = state.recipeIds.includes(recipeId);
+  return has ? unpickRecipe(state, recipeId) : pickRecipe(state, recipeId);
+}
+
+/** Picks a recipe, or updates the choices of one already picked. */
+export function pickRecipe(state: OrderState, recipeId: number, choice?: RecipeChoice): OrderState {
+  const choices = { ...state.choices };
+  if (choice) choices[recipeId] = choice;
+  else delete choices[recipeId];
   return {
     ...state,
-    recipeIds: has ? state.recipeIds.filter((id) => id !== recipeId) : [...state.recipeIds, recipeId],
+    recipeIds: state.recipeIds.includes(recipeId) ? state.recipeIds : [...state.recipeIds, recipeId],
+    choices,
     stockReviewed: false,
   };
+}
+
+export function unpickRecipe(state: OrderState, recipeId: number): OrderState {
+  const { [recipeId]: _dropped, ...choices } = state.choices;
+  return { ...state, recipeIds: state.recipeIds.filter((id) => id !== recipeId), choices, stockReviewed: false };
 }
 
 /** Records how many of a grocery's product to buy. 0 means there's enough at home. */

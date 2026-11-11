@@ -130,6 +130,56 @@ test("closing the app resumes the order where it left off", async ({ page }) => 
   await expect(page.locator(".card .item-name")).toHaveText("Flour");
 });
 
+test("picking a recipe asks about its optional ingredients and the recipes it's made from", async ({ page }) => {
+  await login(page);
+  await page.getByRole("button", { name: "Pozole" }).click();
+  const sheet = page.getByRole("dialog", { name: "Pozole" });
+  await expect(sheet.getByRole("group", { name: /Salsa verde/ }).getByRole("button", { name: "Make it" })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByRole("checkbox")).toHaveCount(2);
+  await sheet.getByLabel("Radishes, sliced").check();
+  await sheet.getByRole("button", { name: "Add to this week" }).click();
+  await expect(page.getByText("1 chosen.")).toBeVisible();
+  await next(page);
+
+  // Made: the salsa's ingredients come in, labeled with both recipes. Only the picked topping comes in.
+  const names = async () => {
+    const seen: string[] = [];
+    while (await page.locator(".card").count()) {
+      seen.push((await page.locator(".card .item-name").textContent())!);
+      await page.getByRole("button", { name: "Have it" }).click();
+    }
+    return seen;
+  };
+  await expect(page.locator(".card .item-name")).toHaveText("Toilet paper");
+  await page.getByRole("button", { name: "Have it" }).click();
+  await page.getByRole("button", { name: "Have it" }).click();
+  await expect(page.locator(".card .item-name")).toHaveText("Hominy");
+  await page.getByRole("button", { name: "Have it" }).click();
+  await expect(page.locator(".card .item-name")).toHaveText("Tomatillos");
+  await expect(page.locator(".card .uses li")).toHaveText(["1 lb, for Salsa verde (in Pozole)"]);
+  expect(await names()).toEqual(["Tomatillos", "Lime", "Radishes"]);
+
+  // Buy it instead: the salsa grocery replaces the salsa's ingredients.
+  await page.getByRole("tab", { name: "Pick recipes" }).click();
+  await page.getByRole("button", { name: "Pozole" }).click();
+  await expect(sheet.getByLabel("Radishes, sliced")).toBeChecked();
+  await sheet.getByRole("button", { name: "Buy it" }).click();
+  await expect(sheet).toContainText("Adds Green salsa to the stock check.");
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await next(page);
+  await expect(page.locator(".card .item-name")).toHaveText("Green salsa");
+  await expect(page.locator(".card .uses li")).toHaveText(["1 cup, for Pozole"]);
+  await page.getByRole("button", { name: "Have it" }).click();
+  await expect(page.getByRole("button", { name: /Green salsa/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tomatillos/ })).toHaveCount(0);
+
+  // Unpicking from the sheet drops the recipe and its choices.
+  await page.getByRole("tab", { name: "Pick recipes" }).click();
+  await page.getByRole("button", { name: "Pozole" }).click();
+  await sheet.getByRole("button", { name: "Unpick" }).click();
+  await expect(page.getByText("Tap the recipes you'll cook this week.")).toBeVisible();
+});
+
 test("every step can be skipped", async ({ page }) => {
   await login(page);
   await page.getByRole("tab", { name: "Anything else" }).click();

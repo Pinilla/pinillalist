@@ -33,7 +33,7 @@ A dish the household cooks: a name, its ingredients with amounts, and optional s
 _Avoid_: Meal
 
 **Ingredient**:
-A grocery a recipe needs. It has a cooking amount ("1 cup") and an optional preparation ("diced"). It doesn't say how much to buy. The person decides that in the stock check.
+A grocery a recipe needs. It has a cooking amount ("1 cup") and an optional preparation ("diced"). It doesn't say how much to buy. The person decides that in the stock check. An ingredient can be **optional**, such as a topping, which reaches the weekly order only when someone picks it along with the recipe. An ingredient can also be **made from another recipe** (a sub-recipe), such as a sauce. Its grocery is then what to buy instead of making it.
 _Avoid_: Component
 
 **Preparation**:

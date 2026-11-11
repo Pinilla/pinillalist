@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { isLocation, type LocationKey } from "../shared/locations.ts";
 import { groceryKey } from "../shared/names.ts";
 import type {
@@ -239,12 +239,20 @@ function collectionIdsByRecipe(db: Conn, recipeIds?: number[]): Map<number, numb
 
 export function listRecipes(db: Conn): RecipeSummary[] {
   const cols = collectionIdsByRecipe(db);
+  const withExtras = new Set(
+    db
+      .selectDistinct({ id: ingredients.recipeId })
+      .from(ingredients)
+      .where(or(eq(ingredients.optional, true), isNotNull(ingredients.subRecipeId)))
+      .all()
+      .map((r) => r.id),
+  );
   return db
     .select({ id: recipes.id, name: recipes.name, photo: recipes.photo })
     .from(recipes)
     .orderBy(asc(recipes.name))
     .all()
-    .map((r) => ({ ...r, collectionIds: cols.get(r.id) ?? [] }));
+    .map((r) => ({ ...r, collectionIds: cols.get(r.id) ?? [], hasExtras: withExtras.has(r.id) }));
 }
 
 export function getRecipes(db: Conn, ids: number[]): Recipe[] {
@@ -258,6 +266,12 @@ export function getRecipes(db: Conn, ids: number[]): Recipe[] {
     .where(inArray(ingredients.recipeId, ids))
     .orderBy(asc(ingredients.recipeId), asc(ingredients.position))
     .all();
+  const subIds = [...new Set(ings.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null))];
+  const subNames = new Map(
+    subIds.length
+      ? db.select({ id: recipes.id, name: recipes.name }).from(recipes).where(inArray(recipes.id, subIds)).all().map((r) => [r.id, r.name])
+      : [],
+  );
   const byRecipe = new Map<number, IngredientRow[]>();
   for (const { i, name } of ings) {
     const row: IngredientRow =
@@ -270,6 +284,8 @@ export function getRecipes(db: Conn, ids: number[]): Recipe[] {
             groceryName: name ?? "",
             cookingAmount: i.cookingAmount,
             preparation: i.preparation,
+            optional: i.optional,
+            subRecipe: i.subRecipeId !== null ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" } : null,
           };
     byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), row]);
   }
@@ -290,6 +306,7 @@ export function getRecipes(db: Conn, ids: number[]): Recipe[] {
         sourceUrl: r.sourceUrl,
         rating: r.rating,
         ingredients: byRecipe.get(r.id) ?? [],
+        hasExtras: (byRecipe.get(r.id) ?? []).some((i) => i.kind === "ingredient" && (i.optional || i.subRecipe !== null)),
       } satisfies Recipe,
     ]),
   );
@@ -308,7 +325,15 @@ export function getRecipe(db: Conn, id: number): Recipe {
 
 export type IngredientInput =
   | { kind: "heading"; text: string }
-  | { kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string };
+  | {
+      kind: "ingredient";
+      groceryName: string;
+      cookingAmount: string;
+      preparation: string;
+      optional?: boolean;
+      /** Another recipe this ingredient is made from. */
+      subRecipeId?: number | null;
+    };
 
 export interface RecipeInput {
   name: string;
@@ -338,6 +363,13 @@ function writeRecipeParts(tx: Tx, id: number, input: RecipeInput) {
     }
     if (!ing.groceryName.trim()) return;
     const { grocery } = findOrCreateGrocery(tx, ing.groceryName);
+    const subRecipeId = ing.subRecipeId ?? null;
+    if (subRecipeId !== null) {
+      if (subRecipeId === id) throw new Conflict("A recipe can't use itself as an ingredient.");
+      if (!tx.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, subRecipeId)).get()) {
+        throw new Conflict(`There's no recipe ${subRecipeId} to use as an ingredient.`);
+      }
+    }
     tx.insert(ingredients)
       .values({
         recipeId: id,
@@ -346,6 +378,8 @@ function writeRecipeParts(tx: Tx, id: number, input: RecipeInput) {
         groceryId: grocery.id,
         cookingAmount: ing.cookingAmount.trim(),
         preparation: ing.preparation.trim(),
+        optional: ing.optional ?? false,
+        subRecipeId,
       })
       .run();
   });
