@@ -180,6 +180,35 @@ test("picking a recipe asks about its optional ingredients and the recipes it's 
   await expect(page.getByText("Tap the recipes you'll cook this week.")).toBeVisible();
 });
 
+test("collection chips combine, so two chips show recipes from either", async ({ page }) => {
+  await login(page);
+  await page.getByRole("link", { name: "Recipes" }).click();
+  const chips = page.getByRole("group", { name: "Collections" });
+  const tiles = page.locator(".grid .tile .t");
+  await expect(tiles).toHaveText(["Chili", "Cookies", "Pozole", "Salsa verde", "Tacos"]);
+
+  await chips.getByRole("button", { name: "Easy Dinner" }).click();
+  await expect(tiles).toHaveText(["Chili", "Tacos"]);
+  await chips.getByRole("button", { name: "Desserts" }).click();
+  await expect(tiles).toHaveText(["Chili", "Cookies", "Tacos"]);
+  await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
+
+  // Turning one chip back off leaves the other on.
+  await chips.getByRole("button", { name: "Easy Dinner" }).click();
+  await expect(tiles).toHaveText(["Cookies"]);
+  await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute("aria-pressed", "true");
+
+  await chips.getByRole("button", { name: "All" }).click();
+  await expect(tiles).toHaveCount(5);
+  await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute("aria-pressed", "false");
+
+  // Pick recipes in the weekly order works the same way.
+  await page.getByRole("link", { name: "Order" }).click();
+  await chips.getByRole("button", { name: "Easy Dinner" }).click();
+  await chips.getByRole("button", { name: "Desserts" }).click();
+  await expect(page.locator(".grid .tile .t")).toHaveText(["Chili", "Cookies", "Tacos"]);
+});
+
 test("every step can be skipped", async ({ page }) => {
   await login(page);
   await page.getByRole("tab", { name: "Anything else" }).click();

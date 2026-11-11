@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { formatNumber } from "../../shared/amounts.ts";
 import { buildCartPlan, type OrderLine } from "../../shared/carts.ts";
+import { filterRecipes } from "../../shared/filters.ts";
 import { locationLabel } from "../../shared/locations.ts";
 import { defaultMode, mergeIngredients, subRecipeIds, type SubRecipeMode } from "../../shared/merge.ts";
 import {
@@ -20,7 +21,7 @@ import {
 import { buildStockCheck, type CheckItem } from "../../shared/stock.ts";
 import { STORE_NAMES, type Grocery, type Recipe, type RecipeSummary } from "../../shared/types.ts";
 import { api } from "../api.ts";
-import { Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
+import { CollectionChips, Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
 import { useData } from "../data.tsx";
 
 const STORAGE_KEY = "pinillalist.order";
@@ -191,14 +192,9 @@ function PickRecipes({ state, setState }: StepProps) {
   const desktop = useDesktop();
   const [query, setQuery] = useState("");
   const [sheetFor, setSheetFor] = useState<RecipeSummary | null>(null);
-  const filter = state.collectionFilter;
   const tap = (r: RecipeSummary) => (r.hasExtras ? setSheetFor(r) : setState((s) => toggleRecipe(s, r.id)));
   const nameById = new Map(recipes.map((r) => [r.id, r.name]));
-  const shown = recipes.filter(
-    (r) =>
-      (filter === null || r.collectionIds.includes(filter)) &&
-      (!query || r.name.toLowerCase().includes(query.toLowerCase())),
-  );
+  const shown = filterRecipes(recipes, state.collectionFilters, query);
 
   return (
     <div className="stack pick">
@@ -209,20 +205,11 @@ function PickRecipes({ state, setState }: StepProps) {
             : `${state.recipeIds.length} chosen. Tap again to unpick.`}
         </p>
         <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
-        <div className="chips" role="group" aria-label="Collections">
-          <button className={`chip${filter === null ? " on" : ""}`} onClick={() => setState((s) => ({ ...s, collectionFilter: null }))}>
-            All
-          </button>
-          {collections.map((c) => (
-            <button
-              key={c.id}
-              className={`chip${filter === c.id ? " on" : ""}`}
-              onClick={() => setState((s) => ({ ...s, collectionFilter: c.id }))}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
+        <CollectionChips
+          collections={collections}
+          chosen={state.collectionFilters}
+          onChange={(chosen) => setState((s) => ({ ...s, collectionFilters: chosen }))}
+        />
         {shown.length === 0 ? (
           <p className="empty">No recipes here.</p>
         ) : (

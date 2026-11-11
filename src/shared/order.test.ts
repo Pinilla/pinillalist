@@ -85,6 +85,13 @@ describe("order state", () => {
     expect(loadOrder(JSON.stringify({ version: 3, step: 2 })).step).toBe(2);
   });
 
+  it("turns an older order's single collection filter into a list", () => {
+    expect(loadOrder(JSON.stringify({ version: 3, collectionFilter: 4 })).collectionFilters).toEqual([4]);
+    expect(loadOrder(JSON.stringify({ version: 3, collectionFilter: null })).collectionFilters).toEqual([]);
+    expect(loadOrder(JSON.stringify({ version: 2, collectionFilter: 7 })).collectionFilters).toEqual([7]);
+    expect("collectionFilter" in loadOrder(JSON.stringify({ version: 3, collectionFilter: 4 }))).toBe(false);
+  });
+
   it("keeps the answers of an order saved before quantities replaced the three choices", () => {
     const old = {
       version: 1,
