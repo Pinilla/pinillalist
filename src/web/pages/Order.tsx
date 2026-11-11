@@ -123,7 +123,7 @@ export function OrderPage() {
   if (!loaded) return <main className="wrap empty">Loading…</main>;
 
   return (
-    <main className={`wrap stack order${state.step >= 1 && state.step <= 2 ? " narrow-step" : ""}`}>
+    <main className={`wrap stack order${state.step === 0 ? " pick-step" : ""}${state.step >= 1 && state.step <= 2 ? " narrow-step" : ""}`}>
       <div>
         <div className="row between">
           <span className="label">

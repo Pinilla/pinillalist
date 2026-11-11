@@ -41,23 +41,32 @@ test("picked recipes are listed beside the grid and every collection chip is vis
   await expectNoSidewaysScroll(page);
 });
 
-test("Back and Next sit centered right under each step's content", async ({ page }) => {
+test("Back and Next are centered on every step, above the recipes on Pick recipes and under the content after", async ({ page }) => {
   await login(page);
   const foot = page.locator(".sticky-foot");
   const body = page.locator(".step-body");
   const main = page.locator("main.order");
-  // Pick recipes has no step before it, so there's no Back button.
-  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
-  for (const step of ["Pick recipes", "Stock check", "Anything else"]) {
-    await page.getByRole("tab", { name: step }).click();
-    await expect(page.getByRole("heading", { name: step })).toBeVisible();
+  const place = async () => {
     const buttons = foot.getByRole("button");
     const first = (await buttons.first().boundingBox())!;
     const last = (await buttons.last().boundingBox())!;
     const [b, m] = [(await body.boundingBox())!, (await main.boundingBox())!];
-    // Below the content, never over it, and centered on the page column.
-    expect(first.y).toBeGreaterThanOrEqual(b.y + b.height);
     expect(Math.abs((first.x + last.x + last.width) / 2 - (m.x + m.width / 2))).toBeLessThan(2);
+    return { top: first.y, bottom: first.y + first.height, bodyTop: b.y, bodyBottom: b.y + b.height };
+  };
+
+  // Pick recipes: no Back button, and Next sits above the grid and stays on screen while scrolling.
+  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  const pick = await place();
+  expect(pick.bottom).toBeLessThanOrEqual(pick.bodyTop);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(page.getByRole("button", { name: "Next: Stock check" })).toBeInViewport();
+
+  for (const step of ["Stock check", "Anything else"]) {
+    await page.getByRole("tab", { name: step }).click();
+    await expect(page.getByRole("heading", { name: step })).toBeVisible();
+    const p = await place();
+    expect(p.top).toBeGreaterThanOrEqual(p.bodyBottom);
   }
   await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
   await expectNoSidewaysScroll(page);
