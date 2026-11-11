@@ -30,19 +30,27 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await expect(page.getByText("2 chosen.")).toBeVisible();
   await next(page);
 
-  // 2. Stock check: one card per grocery, listing each recipe's ingredient line.
+  // 2. Stock check: one walk through the house, with the Essentials mixed in.
   await expect(page.getByRole("heading", { name: "Stock check" })).toBeVisible();
   const card = page.locator(".card");
+  const where = card.locator(".where");
   const quantity = card.getByRole("group", { name: "Quantity to buy" });
+  const status = quantity.getByRole("status");
+
+  // Master bathroom: an Essential starts at 0, so Next means there's enough.
+  await expect(where).toHaveText("Master bathroom");
+  await expect(card.locator(".item-name")).toHaveText("Toilet paper");
+  await expect(card).toContainText("Extra roll in the closet");
+  await expect(status).toHaveText("0");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // Pantry: each recipe's ingredient line, starting at 1.
+  await expect(where).toHaveText("Pantry");
   await expect(card.locator(".item-name")).toHaveText("Onion");
   await expect(card).toContainText("Yellow onions, 3 lb bag");
   await expect(card.locator(".uses li")).toHaveText(["2 diced, for Chili", "1, for Tacos"]);
-  await expect(quantity.getByRole("status")).toHaveText("1");
+  await expect(status).toHaveText("1");
   await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  // Taking the quantity down to 0 means there's enough at home, and the next card comes up.
-  await expect(card.locator(".item-name")).toHaveText("Ground beef");
-  await quantity.getByRole("button", { name: "Less" }).click();
 
   await expect(card.locator(".item-name")).toHaveText("Cumin");
   await expect(card).toContainText("No product linked");
@@ -53,33 +61,41 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await quantity.getByRole("button", { name: "More" }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
-  // Summary after the last card. Change Ground beef from the summary.
-  await expect(page.getByText("3 of 4 to buy.")).toBeVisible();
+  // Fridge: taking a quantity down to 0 means there's enough at home, and the next card comes up.
+  await expect(where).toHaveText("Fridge");
+  await expect(card.locator(".item-name")).toHaveText("Ground beef");
+  await quantity.getByRole("button", { name: "Less" }).click();
+
+  // The deli cheese is an Essential sold by the pound.
+  await expect(card.locator(".item-name")).toHaveText("Deli American cheese");
+  await expect(status).toHaveText("0");
+  for (let i = 0; i < 4; i++) await quantity.getByRole("button", { name: "More" }).click();
+  await expect(status).toHaveText("1");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // Summary after the last card, grouped by location. Change Ground beef from the summary.
+  await expect(page.getByText("4 of 6 to buy.")).toBeVisible();
+  await expect(page.locator(".step-body h2")).toHaveText(["Master bathroom", "Pantry", "Fridge"]);
   await expect(page.getByRole("button", { name: /Ground beef/ })).toContainText("Have it");
   await expect(page.getByRole("button", { name: /Tortillas/ })).toContainText("Buy 2");
   await page.getByRole("button", { name: /Ground beef/ }).click();
   await expect(card.locator(".item-name")).toHaveText("Ground beef");
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByText("4 of 4 to buy.")).toBeVisible();
+  await expect(page.getByText("5 of 6 to buy.")).toBeVisible();
   await next(page);
 
-  // 3. Essentials: the deli cheese is sold by the pound.
-  await page.getByRole("button", { name: "Deli American cheese", exact: true }).click();
-  await page.getByRole("group", { name: "How many Deli American cheese" }).getByRole("button", { name: "More" }).click();
-  await next(page);
-
-  // 4. Anything else: a grocery that isn't in the catalog yet.
+  // 3. Anything else: a grocery that isn't in the catalog yet.
   await page.getByLabel("Search the catalog").fill("Bananas");
   await page.getByRole("button", { name: /Add "Bananas" as a new grocery/ }).click();
   await expect(page.locator(".list").getByText("Bananas")).toBeVisible();
   await next(page);
 
-  // 5. Fill carts
+  // 4. Fill carts
   const walmart = page.getByRole("link", { name: "Fill my Walmart cart" });
   const amazon = page.getByRole("link", { name: "Fill my Amazon cart" });
   await expect(walmart).toHaveAttribute(
     "href",
-    "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,10450114_1,22222222_1.25",
+    "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,10450114_1,22222222_1",
   );
   await expect(amazon).toHaveAttribute("href", "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07XJ8C8F5&Quantity.1=2");
   const byHand = page.locator("section", { hasText: "Add these by hand" });
@@ -88,7 +104,7 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
 
   // Removing an item takes it out of the link.
   await page.getByRole("button", { name: "Remove Ground beef" }).click();
-  await expect(walmart).toHaveAttribute("href", "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,22222222_1.25");
+  await expect(walmart).toHaveAttribute("href", "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,22222222_1");
   await page.getByRole("button", { name: "Put back" }).click();
   await expect(walmart).toHaveAttribute("href", /10450114_1/);
 
@@ -103,7 +119,12 @@ test("closing the app resumes the order where it left off", async ({ page }) => 
   await login(page);
   await page.getByRole("button", { name: "Cookies" }).click();
   await next(page);
-  await expect(page.getByRole("heading", { name: "Stock check" })).toBeVisible();
+  // The walk starts with the Essentials and ends with Flour, which has no location.
+  await expect(page.locator(".card .item-name")).toHaveText("Toilet paper");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator(".card .item-name")).toHaveText("Deli American cheese");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator(".card .where")).toHaveText("Other");
   await page.reload();
   await expect(page.getByRole("heading", { name: "Stock check" })).toBeVisible();
   await expect(page.locator(".card .item-name")).toHaveText("Flour");

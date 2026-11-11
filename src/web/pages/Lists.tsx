@@ -158,7 +158,7 @@ export function ListPage({ id, embedded = false }: { id: number; embedded?: bool
           )}
         </section>
       )}
-      {essentials && <p className="muted">These are never done. Each Saturday, mark the low ones in the weekly order.</p>}
+      {essentials && <p className="muted">These are never done. Each Saturday, the stock check asks about each one so you can mark the low ones.</p>}
       <datalist id="list-grocery-names">
         {groceries.map((g) => (
           <option key={g.id} value={g.name} />

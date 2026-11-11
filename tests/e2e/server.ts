@@ -7,6 +7,7 @@ import { createApp } from "../../src/server/app.ts";
 import { setPassword } from "../../src/server/auth.ts";
 import { migrateDb, openDb } from "../../src/server/db/index.ts";
 import * as repo from "../../src/server/repo.ts";
+import type { LocationKey } from "../../src/shared/locations.ts";
 import type { Product } from "../../src/shared/types.ts";
 
 export const PASSWORD = "e2e household password";
@@ -45,6 +46,10 @@ const link = (name: string, p: Product, unit = "") => {
   if (unit) repo.updateGrocery(db, grocery.id, { unit });
   repo.setProduct(db, grocery.id, p);
 };
+const keep = (name: string, location: LocationKey) => {
+  const { grocery } = repo.findOrCreateGrocery(db, name);
+  repo.updateGrocery(db, grocery.id, { location });
+};
 link("Onion", product("walmart", "51259212", "Yellow onions, 3 lb bag"));
 link("Ground beef", product("walmart", "10450114", "Ground beef 80/20"), "lb");
 link("Tortillas", product("amazon", "B07XJ8C8F5", "Flour tortillas"), "pack");
@@ -54,6 +59,14 @@ repo.addListItem(db, essentials.id, { groceryName: "Toilet paper", details: "Ext
 repo.addListItem(db, essentials.id, { groceryName: "Deli American cheese" });
 link("Toilet paper", product("amazon", "B000000001", "Toilet paper 24 rolls"));
 link("Deli American cheese", product("walmart", "22222222", "Deli American cheese", "pound"));
+
+// The stock check walks Master bathroom, then Pantry, then Fridge. Flour has no location, so it comes last.
+keep("Toilet paper", "master_bathroom");
+keep("Onion", "pantry");
+keep("Cumin", "pantry");
+keep("Tortillas", "pantry");
+keep("Ground beef", "fridge");
+keep("Deli American cheese", "fridge");
 
 const app = createApp({ db, photosDir: path.join(dir, "photos"), distDir: path.resolve("dist") });
 const port = Number(process.env.PORT ?? 3199);

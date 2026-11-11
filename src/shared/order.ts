@@ -1,22 +1,20 @@
 import type { OrderLine } from "./carts.ts";
-import type { MergedItem } from "./merge.ts";
+import type { CheckItem } from "./stock.ts";
 import type { Grocery } from "./types.ts";
 
-export const STEPS = ["Pick recipes", "Stock check", "Essentials", "Anything else", "Fill carts"] as const;
+export const STEPS = ["Pick recipes", "Stock check", "Anything else", "Fill carts"] as const;
 
 /** One phone's weekly order in progress. It lives in the phone's local storage, never on the server. */
 export interface OrderState {
-  version: 2;
+  version: 3;
   step: number;
   recipeIds: number[];
   collectionFilter: number | null;
-  /** Stock check answers: grocery id to product quantity. 0 means there's enough at home. */
+  /** Stock check answers, for recipe groceries and Essentials alike: grocery id to product quantity. 0 means there's enough at home. */
   stock: Record<string, number>;
   stockIndex: number;
   /** True once the last card is answered, so the summary shows. */
   stockReviewed: boolean;
-  /** Essentials marked low this week: grocery id to product quantity. */
-  essentials: Record<string, number>;
   /** Anything else: grocery id to product quantity, in the order added. */
   extras: Record<string, number>;
   /** Stores whose cart link this phone has opened. */
@@ -27,14 +25,13 @@ export interface OrderState {
 
 export function newOrder(): OrderState {
   return {
-    version: 2,
+    version: 3,
     step: 0,
     recipeIds: [],
     collectionFilter: null,
     stock: {},
     stockIndex: 0,
     stockReviewed: false,
-    essentials: {},
     extras: {},
     sent: [],
     removed: [],
@@ -44,18 +41,40 @@ export function newOrder(): OrderState {
 /** Version 1 stored each stock answer as "have it", "need all" or "need some" with a quantity. */
 type OldStockChoice = { choice: "have" } | { choice: "all" | "some"; quantity: number };
 
-/** Reads a saved order, falling back to a new one if it's missing or broken. A version 1 order keeps its answers. */
+/** Version 2 had a separate Essentials step (step 2), so its later steps were one higher. */
+const V2_STEP = [0, 1, 1, 2, 3];
+
+/**
+ * Reads a saved order, falling back to a new one if it's missing or broken.
+ * Older versions keep their answers: version 1's three choices become
+ * quantities, and version 2's Essentials answers move into the stock check.
+ */
 export function loadOrder(saved: string | null): OrderState {
   if (!saved) return newOrder();
   try {
-    const parsed = JSON.parse(saved) as Omit<Partial<OrderState>, "version"> & { version?: number };
-    if (parsed.version === 1) {
-      const old = (parsed.stock ?? {}) as unknown as Record<string, OldStockChoice>;
-      const stock = Object.fromEntries(Object.entries(old).map(([id, a]) => [id, a.choice === "have" ? 0 : a.quantity]));
-      return { ...newOrder(), ...parsed, version: 2, stock };
+    const parsed = JSON.parse(saved) as Omit<Partial<OrderState>, "version" | "stock"> & {
+      version?: number;
+      stock?: Record<string, unknown>;
+      essentials?: Record<string, number>;
+    };
+    if (parsed.version === 3) return { ...newOrder(), ...parsed, stock: (parsed.stock ?? {}) as Record<string, number>, version: 3 };
+    if (parsed.version !== 1 && parsed.version !== 2) return newOrder();
+    const stock: Record<string, number> = {};
+    for (const [id, a] of Object.entries(parsed.stock ?? {})) {
+      stock[id] = typeof a === "number" ? a : (a as OldStockChoice).choice === "have" ? 0 : (a as { quantity: number }).quantity;
     }
-    if (parsed.version !== 2) return newOrder();
-    return { ...newOrder(), ...parsed, version: 2 };
+    const lowEssentials = Object.entries(parsed.essentials ?? {});
+    for (const [id, qty] of lowEssentials) stock[id] = (stock[id] ?? 0) + qty;
+    const { essentials: _dropped, ...rest } = parsed;
+    return {
+      ...newOrder(),
+      ...rest,
+      version: 3,
+      stock,
+      step: V2_STEP[parsed.step ?? 0] ?? 0,
+      // Essentials the old order never asked about are now unanswered cards, so show them before the summary.
+      stockReviewed: false,
+    };
   } catch {
     return newOrder();
   }
@@ -77,20 +96,17 @@ export function answerStock(state: OrderState, groceryId: number, quantity: numb
 }
 
 /**
- * Turns the order into lines for the store carts: needed stock check items,
- * low essentials and extras, one line per grocery with the quantities added.
- * Stock answers for groceries the chosen recipes no longer need are ignored,
- * and so are groceries removed on the last step.
+ * Turns the order into lines for the store carts: the stock check's quantities
+ * and the extras, one line per grocery with the quantities added. Answers for
+ * groceries no longer in the stock check are ignored, and so are groceries
+ * removed on the last step.
  */
-export function orderLines(state: OrderState, merged: MergedItem[], groceries: Map<number, Grocery>): OrderLine[] {
+export function orderLines(state: OrderState, check: CheckItem[], groceries: Map<number, Grocery>): OrderLine[] {
   const quantities = new Map<number, number>();
   const add = (groceryId: number, qty: number) => {
     if (qty > 0) quantities.set(groceryId, (quantities.get(groceryId) ?? 0) + qty);
   };
-  for (const item of merged) {
-    add(item.groceryId, state.stock[item.groceryId] ?? 0);
-  }
-  for (const [id, qty] of Object.entries(state.essentials)) add(Number(id), qty);
+  for (const item of check) add(item.groceryId, state.stock[item.groceryId] ?? 0);
   for (const [id, qty] of Object.entries(state.extras)) add(Number(id), qty);
 
   return [...quantities].flatMap(([groceryId, quantity]) => {
@@ -102,7 +118,7 @@ export function orderLines(state: OrderState, merged: MergedItem[], groceries: M
 }
 
 /** The first stock check card without an answer, or the number of cards when all are answered. */
-export function firstUnanswered(state: OrderState, merged: MergedItem[]): number {
-  const i = merged.findIndex((item) => state.stock[item.groceryId] === undefined);
-  return i === -1 ? merged.length : i;
+export function firstUnanswered(state: OrderState, check: CheckItem[]): number {
+  const i = check.findIndex((item) => state.stock[item.groceryId] === undefined);
+  return i === -1 ? check.length : i;
 }

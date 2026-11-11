@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { isLocation, type LocationKey } from "../shared/locations.ts";
 import { groceryKey } from "../shared/names.ts";
 import type {
   Collection,
@@ -46,7 +47,7 @@ function toGrocery(row: { g: typeof groceries.$inferSelect; p: typeof products.$
   const product: Product | null = p
     ? { store: p.store, storeId: p.storeId, name: p.name, size: p.size, imageUrl: p.imageUrl, soldBy: p.soldBy }
     : null;
-  return { id: g.id, name: g.name, unit: g.unit, product };
+  return { id: g.id, name: g.name, unit: g.unit, location: isLocation(g.location) ? g.location : null, product };
 }
 
 export function listGroceries(db: Conn): Grocery[] {
@@ -81,7 +82,11 @@ export function findOrCreateGrocery(db: Conn, name: string, unit = ""): { grocer
   return { grocery: getGrocery(db, row.id), created: true };
 }
 
-export function updateGrocery(db: Conn, id: number, patch: { name?: string; unit?: string }): Grocery {
+export function updateGrocery(
+  db: Conn,
+  id: number,
+  patch: { name?: string; unit?: string; location?: LocationKey | null },
+): Grocery {
   getGrocery(db, id);
   const set: Partial<typeof groceries.$inferInsert> = {};
   if (patch.name !== undefined) {
@@ -94,6 +99,7 @@ export function updateGrocery(db: Conn, id: number, patch: { name?: string; unit
     set.nameKey = key;
   }
   if (patch.unit !== undefined) set.unit = patch.unit.trim();
+  if (patch.location !== undefined) set.location = patch.location;
   if (Object.keys(set).length) db.update(groceries).set(set).where(eq(groceries.id, id)).run();
   return getGrocery(db, id);
 }

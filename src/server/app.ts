@@ -7,6 +7,7 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { parseProductLink } from "../shared/links.ts";
+import { LOCATIONS, isLocation, type LocationKey } from "../shared/locations.ts";
 import type { Product } from "../shared/types.ts";
 import { COOKIE, COOKIE_MAX_AGE, LoginLimiter, cookieSecret, sessionValue, verifyPassword } from "./auth.ts";
 import type { Db } from "./db/index.ts";
@@ -182,7 +183,13 @@ export function createApp(options: AppOptions) {
 
   api.patch("/groceries/:id", async (c) => {
     const b = await body(c);
-    return c.json(repo.updateGrocery(db, id(c), { name: optStr(b.name, "name"), unit: optStr(b.unit, "unit") }));
+    let location: LocationKey | null | undefined;
+    if (b.location === null || b.location === "") location = null;
+    else if (b.location !== undefined) {
+      if (!isLocation(b.location)) bad(`location must be one of: ${LOCATIONS.map((l) => l.key).join(", ")}`);
+      location = b.location;
+    }
+    return c.json(repo.updateGrocery(db, id(c), { name: optStr(b.name, "name"), unit: optStr(b.unit, "unit"), location }));
   });
 
   api.delete("/groceries/:id", (c) => {

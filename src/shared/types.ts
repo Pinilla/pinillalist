@@ -1,3 +1,5 @@
+import type { LocationKey } from "./locations.ts";
+
 export type Store = "walmart" | "amazon";
 
 export const STORES: Store[] = ["walmart", "amazon"];
@@ -23,6 +25,8 @@ export interface Grocery {
   id: number;
   name: string;
   unit: string;
+  /** Where the household keeps it. Null until someone sets it. */
+  location: LocationKey | null;
   product: Product | null;
 }
 

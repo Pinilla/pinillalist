@@ -123,6 +123,8 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .steps button { height: 6px; border-radius: 3px; background: var(--line); border: 0; padding: 0; }
 .steps button.done { background: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px 20px; text-align: center; display: flex; flex-direction: column; gap: 10px; min-height: 220px; justify-content: center; }
+.card .where { color: var(--accent); }
+.card .essential { margin: 0; }
 .card .uses { list-style: disc; text-align: left; margin: 4px auto; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .card .item-name { font-family: var(--display); font-size: 1.9rem; font-weight: 800; overflow-wrap: anywhere; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -220,10 +222,11 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
   .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
   .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: clip; min-width: 0; }
   .table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.95rem; }
-  .table th:nth-child(1) { width: 26%; }
+  .table th:nth-child(1) { width: 24%; }
   .table th:nth-child(2) { width: 84px; }
-  .table th:nth-child(3) { width: 150px; }
-  .table th:nth-child(5) { width: 124px; }
+  .table th:nth-child(3) { width: 132px; }
+  .table th:nth-child(4) { width: 140px; }
+  .table th:nth-child(6) { width: 124px; }
   .table th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 0; background: var(--bg); border-bottom: 1px solid var(--line); white-space: nowrap; }
   .table th button { width: 100%; border: 0; background: none; }
   .table th button, .table th.label { text-align: left; padding: 10px 12px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--muted); }

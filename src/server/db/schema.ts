@@ -9,6 +9,8 @@ export const groceries = sqliteTable(
     name: text().notNull(),
     nameKey: text("name_key").notNull(),
     unit: text().notNull().default(""),
+    /** A key from LOCATIONS in src/shared/locations.ts, or null. */
+    location: text(),
   },
   (t) => [uniqueIndex("groceries_name_key").on(t.nameKey)],
 );
