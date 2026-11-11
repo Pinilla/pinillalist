@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { formatNumber } from "../shared/amounts.ts";
 import { STORE_NAMES, type Product } from "../shared/types.ts";
 import { photoUrl } from "./api.ts";
@@ -82,9 +82,52 @@ export function ToastHost() {
   ) : null;
 }
 
-export function Page({ title, back, actions, children }: { title: ReactNode; back?: ReactNode; actions?: ReactNode; children: ReactNode }) {
+const DESKTOP = "(min-width: 900px)";
+
+/** True when the window is wide enough for the sidebar layout. Matches the breakpoint in styles.css. */
+export function useDesktop(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia(DESKTOP);
+      query.addEventListener("change", notify);
+      return () => query.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(DESKTOP).matches,
+  );
+}
+
+/**
+ * A screen with a title. `embedded` renders it as a panel inside another screen, which the
+ * desktop layout uses to show a grocery or a list next to its index.
+ */
+export function Page({
+  title,
+  back,
+  actions,
+  children,
+  width,
+  embedded = false,
+}: {
+  title: ReactNode;
+  back?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+  width?: "medium";
+  embedded?: boolean;
+}) {
+  if (embedded) {
+    return (
+      <section className="panel stack">
+        <div className="row between nowrap">
+          <h2 className="grow">{title}</h2>
+          {actions}
+        </div>
+        {children}
+      </section>
+    );
+  }
   return (
-    <main className="wrap stack">
+    <main className={`wrap stack${width ? ` ${width}` : ""}`}>
       {back}
       <div className="row between nowrap">
         <h1 className="grow">{title}</h1>

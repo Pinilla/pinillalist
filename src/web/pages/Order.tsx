@@ -16,7 +16,7 @@ import {
 } from "../../shared/order.ts";
 import { STORE_NAMES, type Grocery, type Recipe } from "../../shared/types.ts";
 import { api } from "../api.ts";
-import { Stepper, StoreBadge, Thumb, productLabel, toast } from "../components.tsx";
+import { Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
 import { useData } from "../data.tsx";
 
 const STORAGE_KEY = "pinillalist.order";
@@ -97,7 +97,7 @@ export function OrderPage() {
   if (!loaded) return <main className="wrap empty">Loading…</main>;
 
   return (
-    <main className="wrap stack">
+    <main className={`wrap stack order${state.step >= 1 && state.step <= 3 ? " narrow-step" : ""}`}>
       <div>
         <div className="row between">
           <span className="label">
@@ -114,29 +114,35 @@ export function OrderPage() {
               aria-label={name}
               className={i <= state.step ? "done" : ""}
               onClick={() => go(i)}
-            />
+            >
+              <span className="step-name">
+                {i + 1}. {name}
+              </span>
+            </button>
           ))}
         </div>
         <h1>{STEPS[state.step]}</h1>
       </div>
 
-      {state.step === 0 && <PickRecipes state={state} setState={setState} />}
-      {state.step === 1 && (
-        <StockCheck state={state} setState={setState} merged={merged} groceryById={groceryById} onSetBuying={setBuyingAmount} />
-      )}
-      {state.step === 2 && <Essentials state={state} setState={setState} />}
-      {state.step === 3 && <AnythingElse state={state} setState={setState} />}
-      {state.step === 4 && (
-        <FillCarts
-          state={state}
-          setState={setState}
-          lines={lines}
-          onReset={() => {
-            setState(() => newOrder());
-            window.scrollTo(0, 0);
-          }}
-        />
-      )}
+      <div className="stack step-body">
+        {state.step === 0 && <PickRecipes state={state} setState={setState} />}
+        {state.step === 1 && (
+          <StockCheck state={state} setState={setState} merged={merged} groceryById={groceryById} onSetBuying={setBuyingAmount} />
+        )}
+        {state.step === 2 && <Essentials state={state} setState={setState} />}
+        {state.step === 3 && <AnythingElse state={state} setState={setState} />}
+        {state.step === 4 && (
+          <FillCarts
+            state={state}
+            setState={setState}
+            lines={lines}
+            onReset={() => {
+              setState(() => newOrder());
+              window.scrollTo(0, 0);
+            }}
+          />
+        )}
+      </div>
 
       <div className="sticky-foot">
         <div className="row nowrap">
@@ -158,8 +164,10 @@ type StepProps = { state: OrderState; setState: (u: (s: OrderState) => OrderStat
 
 function PickRecipes({ state, setState }: StepProps) {
   const { recipes, collections } = useData();
+  const desktop = useDesktop();
   const [query, setQuery] = useState("");
   const filter = state.collectionFilter;
+  const nameById = new Map(recipes.map((r) => [r.id, r.name]));
   const shown = recipes.filter(
     (r) =>
       (filter === null || r.collectionIds.includes(filter)) &&
@@ -167,50 +175,72 @@ function PickRecipes({ state, setState }: StepProps) {
   );
 
   return (
-    <>
-      <p className="muted">
-        {state.recipeIds.length === 0
-          ? "Tap the recipes you'll cook this week."
-          : `${state.recipeIds.length} chosen. Tap again to unpick.`}
-      </p>
-      <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
-      <div className="chips" role="group" aria-label="Collections">
-        <button className={`chip${filter === null ? " on" : ""}`} onClick={() => setState((s) => ({ ...s, collectionFilter: null }))}>
-          All
-        </button>
-        {collections.map((c) => (
-          <button
-            key={c.id}
-            className={`chip${filter === c.id ? " on" : ""}`}
-            onClick={() => setState((s) => ({ ...s, collectionFilter: c.id }))}
-          >
-            {c.name}
+    <div className="stack pick">
+      <div className="stack">
+        <p className="muted">
+          {state.recipeIds.length === 0
+            ? "Tap the recipes you'll cook this week."
+            : `${state.recipeIds.length} chosen. Tap again to unpick.`}
+        </p>
+        <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
+        <div className="chips" role="group" aria-label="Collections">
+          <button className={`chip${filter === null ? " on" : ""}`} onClick={() => setState((s) => ({ ...s, collectionFilter: null }))}>
+            All
           </button>
-        ))}
-      </div>
-      {shown.length === 0 ? (
-        <p className="empty">No recipes here.</p>
-      ) : (
-        <div className="grid">
-          {shown.map((r) => {
-            const on = state.recipeIds.includes(r.id);
-            return (
-              <button key={r.id} className={`tile${on ? " on" : ""}`} aria-pressed={on} onClick={() => setState((s) => toggleRecipe(s, r.id))}>
-                <Thumb photo={r.photo} name={r.name} className="tile-img" />
-                <span className="t">{r.name}</span>
-                {on && (
-                  <span className="mark" aria-hidden="true">
-                    ✓
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {collections.map((c) => (
+            <button
+              key={c.id}
+              className={`chip${filter === c.id ? " on" : ""}`}
+              onClick={() => setState((s) => ({ ...s, collectionFilter: c.id }))}
+            >
+              {c.name}
+            </button>
+          ))}
         </div>
+        {shown.length === 0 ? (
+          <p className="empty">No recipes here.</p>
+        ) : (
+          <div className="grid">
+            {shown.map((r) => {
+              const on = state.recipeIds.includes(r.id);
+              return (
+                <button key={r.id} className={`tile${on ? " on" : ""}`} aria-pressed={on} onClick={() => setState((s) => toggleRecipe(s, r.id))}>
+                  <Thumb photo={r.photo} name={r.name} className="tile-img" />
+                  <span className="t">{r.name}</span>
+                  {on && (
+                    <span className="mark" aria-hidden="true">
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {desktop && (
+        <aside className="storebox chosen" aria-label="Picked recipes">
+          <h2>This week</h2>
+          {state.recipeIds.length === 0 ? (
+            <p className="muted small">Nothing picked yet.</p>
+          ) : (
+            <div className="list">
+              {state.recipeIds.map((id) => (
+                <div key={id} className="li">
+                  <span className="grow name">{nameById.get(id) ?? "Deleted recipe"}</span>
+                  <button className="btn plain small" aria-label={`Unpick ${nameById.get(id) ?? "recipe"}`} onClick={() => setState((s) => toggleRecipe(s, id))}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
       )}
-    </>
+    </div>
   );
 }
+
 
 function describeChoice(item: MergedItem, answer: StockChoice | undefined, grocery: Grocery | undefined): string {
   if (!answer) return "Not checked yet";
@@ -672,79 +702,81 @@ function FillCarts({ state, setState, lines, onReset }: StepProps & { lines: Ord
   return (
     <>
       {nothing && <p className="empty">Nothing to buy yet. Go back and add some items.</p>}
-      {plan.carts.map((cart) => {
-        const sent = state.sent.includes(cart.store);
-        return (
-          <section key={cart.store} className="storebox">
-            <div className="row between">
-              <h2>{STORE_NAMES[cart.store]}</h2>
-              <span className="muted small">
-                {cart.lines.length} item{cart.lines.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <LineList lines={cart.lines} onRemove={remove} />
-            <a
-              className={`btn big ${cart.store}`}
-              href={cart.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setState((s) => ({ ...s, sent: [...new Set([...s.sent, cart.store])] }))}
-            >
-              Fill my {STORE_NAMES[cart.store]} cart
-            </a>
-            {sent && (
-              <p className="small muted">
-                Sent to {STORE_NAMES[cart.store]}. Tapping again adds everything a second time.
-                {cart.store === "amazon" && " On Amazon, confirm the items on the page that opens."}
-              </p>
-            )}
-          </section>
-        );
-      })}
-      {plan.unlinked.length > 0 && (
-        <section className="storebox">
-          <h2>Add these by hand</h2>
-          <p className="small muted">These groceries have no linked product, so no cart link can include them.</p>
-          <div className="list">
-            {plan.unlinked.map((l) => (
-              <Link key={l.groceryId} className="li" href={`/catalog/${l.groceryId}`}>
-                <span className="grow name">{l.groceryName}</span>
-                <strong>{formatNumber(l.quantity)}</strong>
-                <span className="small">Link</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      {plan.invalid.length > 0 && (
-        <section className="storebox">
-          <h2 className="warn-text">Product links to fix</h2>
-          <p className="small muted">The store would reject these product numbers, so they're left out of the cart links.</p>
-          <div className="list">
-            {plan.invalid.map((l) => (
-              <Link key={l.groceryId} className="li" href={`/catalog/${l.groceryId}`}>
-                <span className="grow name">{l.groceryName}</span>
-                <span className="small">Fix</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      {state.removed.length > 0 && (
-        <section className="storebox">
-          <h2>Removed</h2>
-          <div className="list">
-            {state.removed.map((id) => (
-              <div key={id} className="li">
-                <span className="grow name">{groceryById.get(id)?.name ?? "Removed grocery"}</span>
-                <button className="btn plain small" onClick={() => setState((s) => ({ ...s, removed: s.removed.filter((r) => r !== id) }))}>
-                  Put back
-                </button>
+      <div className="stack cart-grid">
+        {plan.carts.map((cart) => {
+          const sent = state.sent.includes(cart.store);
+          return (
+            <section key={cart.store} className="storebox">
+              <div className="row between">
+                <h2>{STORE_NAMES[cart.store]}</h2>
+                <span className="muted small">
+                  {cart.lines.length} item{cart.lines.length === 1 ? "" : "s"}
+                </span>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+              <LineList lines={cart.lines} onRemove={remove} />
+              <a
+                className={`btn big ${cart.store}`}
+                href={cart.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setState((s) => ({ ...s, sent: [...new Set([...s.sent, cart.store])] }))}
+              >
+                Fill my {STORE_NAMES[cart.store]} cart
+              </a>
+              {sent && (
+                <p className="small muted">
+                  Sent to {STORE_NAMES[cart.store]}. Tapping again adds everything a second time.
+                  {cart.store === "amazon" && " On Amazon, confirm the items on the page that opens."}
+                </p>
+              )}
+            </section>
+          );
+        })}
+        {plan.unlinked.length > 0 && (
+          <section className="storebox">
+            <h2>Add these by hand</h2>
+            <p className="small muted">These groceries have no linked product, so no cart link can include them.</p>
+            <div className="list">
+              {plan.unlinked.map((l) => (
+                <Link key={l.groceryId} className="li" href={`/catalog/${l.groceryId}`}>
+                  <span className="grow name">{l.groceryName}</span>
+                  <strong>{formatNumber(l.quantity)}</strong>
+                  <span className="small">Link</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        {plan.invalid.length > 0 && (
+          <section className="storebox">
+            <h2 className="warn-text">Product links to fix</h2>
+            <p className="small muted">The store would reject these product numbers, so they're left out of the cart links.</p>
+            <div className="list">
+              {plan.invalid.map((l) => (
+                <Link key={l.groceryId} className="li" href={`/catalog/${l.groceryId}`}>
+                  <span className="grow name">{l.groceryName}</span>
+                  <span className="small">Fix</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        {state.removed.length > 0 && (
+          <section className="storebox">
+            <h2>Removed</h2>
+            <div className="list">
+              {state.removed.map((id) => (
+                <div key={id} className="li">
+                  <span className="grow name">{groceryById.get(id)?.name ?? "Removed grocery"}</span>
+                  <button className="btn plain small" onClick={() => setState((s) => ({ ...s, removed: s.removed.filter((r) => r !== id) }))}>
+                    Put back
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
       <p className="small muted">
         If a store shows an error instead of the cart, one product is probably unavailable. Remove it here and tap the button again.
       </p>

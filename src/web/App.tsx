@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, Route, Switch, useLocation } from "wouter";
-import { ToastHost } from "./components.tsx";
+import { ToastHost, useDesktop } from "./components.tsx";
 import { DataProvider, useData } from "./data.tsx";
 import { CatalogPage, DuplicatesPage, GroceryPage } from "./pages/Catalog.tsx";
 import { ListPage, ListsPage } from "./pages/Lists.tsx";
@@ -27,6 +27,20 @@ function Tab({ href, label, icon }: { href: string; label: string; icon: string 
   );
 }
 
+// On a desktop the index stays on screen and the chosen item opens beside it, so one
+// route covers both and the index keeps its scroll position and filters.
+function ListsRoute({ id }: { id: number | undefined }) {
+  const desktop = useDesktop();
+  if (desktop) return <ListsPage selectedId={id} />;
+  return id === undefined ? <ListsPage /> : <ListPage key={id} id={id} />;
+}
+
+function CatalogRoute({ id }: { id: number | undefined }) {
+  const desktop = useDesktop();
+  if (desktop) return <CatalogPage selectedId={id} />;
+  return id === undefined ? <CatalogPage /> : <GroceryPage key={id} id={id} />;
+}
+
 function Routes() {
   const { error } = useData();
   const num = (s: string | undefined) => Number(s);
@@ -43,11 +57,9 @@ function Routes() {
         <Route path="/recipes/new">{() => <RecipeEditPage id={null} />}</Route>
         <Route path="/recipes/:id/edit">{(p) => <RecipeEditPage key={p.id} id={num(p.id)} />}</Route>
         <Route path="/recipes/:id">{(p) => <RecipePage key={p.id} id={num(p.id)} />}</Route>
-        <Route path="/lists" component={ListsPage} />
-        <Route path="/lists/:id">{(p) => <ListPage key={p.id} id={num(p.id)} />}</Route>
-        <Route path="/catalog" component={CatalogPage} />
+        <Route path="/lists/:id?">{(p) => <ListsRoute id={p.id ? num(p.id) : undefined} />}</Route>
         <Route path="/catalog/duplicates" component={DuplicatesPage} />
-        <Route path="/catalog/:id">{(p) => <GroceryPage key={p.id} id={num(p.id)} />}</Route>
+        <Route path="/catalog/:id?">{(p) => <CatalogRoute id={p.id ? num(p.id) : undefined} />}</Route>
         <Route>
           <main className="wrap empty">
             Page not found. <Link href="/">Go to the weekly order</Link>
@@ -61,16 +73,20 @@ function Routes() {
 export function App() {
   return (
     <DataProvider>
-      <Routes />
-      <ToastHost />
-      <footer className="tabbar">
+      <div className="tabbar">
+        <div className="brand">pinillalist</div>
         <nav aria-label="Main">
           <Tab href="/" label="Order" icon="order" />
           <Tab href="/recipes" label="Recipes" icon="recipes" />
           <Tab href="/lists" label="Lists" icon="lists" />
           <Tab href="/catalog" label="Catalog" icon="catalog" />
         </nav>
-      </footer>
+        <form className="side-foot" method="post" action="/logout">
+          <button className="btn plain">Log out</button>
+        </form>
+      </div>
+      <Routes />
+      <ToastHost />
     </DataProvider>
   );
 }
