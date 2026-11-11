@@ -217,9 +217,10 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
   .steps button.done { background: none; border-top-color: var(--accent); color: var(--ink); }
   .steps .step-name { display: inline; }
   .order.narrow-step > .step-body, .order.narrow-step > .sticky-foot > div { width: 100%; max-width: 640px; margin-inline: auto; }
-  .sticky-foot { position: sticky; bottom: 0; left: auto; right: auto; padding: 24px 0 16px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
+  /* On a desktop the Back and Next buttons sit centered right under the step's content, not over it. */
+  .sticky-foot { position: static; padding: 8px 0 24px; background: none; }
   .sticky-foot > div { max-width: none; }
-  .sticky-foot .row { justify-content: flex-end; }
+  .sticky-foot .row { justify-content: center; }
   .sticky-foot .btn.grow { flex: 0 1 320px; }
   .pick { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
   .chosen { position: sticky; top: 24px; max-height: calc(100vh - 140px); overflow-y: auto; }

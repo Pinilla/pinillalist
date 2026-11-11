@@ -41,6 +41,28 @@ test("picked recipes are listed beside the grid and every collection chip is vis
   await expectNoSidewaysScroll(page);
 });
 
+test("Back and Next sit centered right under each step's content", async ({ page }) => {
+  await login(page);
+  const foot = page.locator(".sticky-foot");
+  const body = page.locator(".step-body");
+  const main = page.locator("main.order");
+  // Pick recipes has no step before it, so there's no Back button.
+  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  for (const step of ["Pick recipes", "Stock check", "Anything else"]) {
+    await page.getByRole("tab", { name: step }).click();
+    await expect(page.getByRole("heading", { name: step })).toBeVisible();
+    const buttons = foot.getByRole("button");
+    const first = (await buttons.first().boundingBox())!;
+    const last = (await buttons.last().boundingBox())!;
+    const [b, m] = [(await body.boundingBox())!, (await main.boundingBox())!];
+    // Below the content, never over it, and centered on the page column.
+    expect(first.y).toBeGreaterThanOrEqual(b.y + b.height);
+    expect(Math.abs((first.x + last.x + last.width) / 2 - (m.x + m.width / 2))).toBeLessThan(2);
+  }
+  await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+  await expectNoSidewaysScroll(page);
+});
+
 test("the catalog is a sortable table and a grocery opens beside it", async ({ page }) => {
   await login(page);
   await page.getByRole("link", { name: "Catalog" }).click();
