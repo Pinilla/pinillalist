@@ -153,3 +153,24 @@ export function firstUnanswered(state: OrderState, check: CheckItem[]): number {
   const i = check.findIndex((item) => state.stock[item.groceryId] === undefined);
   return i === -1 ? check.length : i;
 }
+
+/**
+ * Opens the stock check on a card, never on the summary: the first card not
+ * answered yet, or the first card when everything is answered.
+ */
+export function openStockCheck(state: OrderState, check: CheckItem[]): OrderState {
+  const unanswered = firstUnanswered(state, check);
+  return { ...state, stockIndex: unanswered < check.length ? unanswered : 0, stockReviewed: false };
+}
+
+/**
+ * Saves a card's answer and moves to the next card in walk order, whether or
+ * not it was answered before. After the last card it goes back to any card
+ * still unanswered, or to the summary when all are done.
+ */
+export function answerAndAdvance(state: OrderState, check: CheckItem[], index: number, quantity: number): OrderState {
+  const next = answerStock(state, check[index]!.groceryId, quantity);
+  if (index + 1 < check.length) return { ...next, stockIndex: index + 1, stockReviewed: false };
+  const unanswered = firstUnanswered(next, check);
+  return unanswered < check.length ? { ...next, stockIndex: unanswered, stockReviewed: false } : { ...next, stockReviewed: true };
+}

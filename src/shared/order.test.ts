@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CheckItem } from "./stock.ts";
-import { answerStock, firstUnanswered, loadOrder, newOrder, orderLines, pickRecipe, toggleRecipe } from "./order.ts";
+import { answerAndAdvance, answerStock, firstUnanswered, loadOrder, newOrder, openStockCheck, orderLines, pickRecipe, toggleRecipe } from "./order.ts";
 import type { Grocery } from "./types.ts";
 
 const walmart = { store: "walmart" as const, storeId: "51259212", name: "Onions 3 lb", size: "3 lb", imageUrl: "", soldBy: "each" as const };
@@ -69,6 +69,31 @@ describe("order state", () => {
     s = toggleRecipe(s, 5);
     expect(s.recipeIds).toEqual([]);
     expect(s.choices).toEqual({});
+  });
+
+  it("opens the stock check on the first unanswered card, or the first card when all are answered, never the summary", () => {
+    const check = [item(onion), item(beef), item(tp, 0)];
+    let s = { ...answerStock(newOrder(), onion.id, 1), stockReviewed: true, stockIndex: 2 };
+    expect(openStockCheck(s, check)).toMatchObject({ stockIndex: 1, stockReviewed: false });
+    s = answerStock(answerStock(s, beef.id, 0), tp.id, 0);
+    expect(openStockCheck(s, check)).toMatchObject({ stockIndex: 0, stockReviewed: false });
+  });
+
+  it("moves to the next card after an answer, even one answered before, and shows the summary after the last", () => {
+    const check = [item(onion), item(beef), item(tp, 0)];
+    let s = [onion, beef, tp].reduce((st, g) => answerStock(st, g.id, 1), newOrder());
+    s = answerAndAdvance({ ...s, stockIndex: 0 }, check, 0, 2);
+    expect(s).toMatchObject({ stockIndex: 1, stockReviewed: false });
+    expect(s.stock[onion.id]).toBe(2);
+    s = answerAndAdvance(s, check, 1, 0);
+    expect(s.stockIndex).toBe(2);
+    expect(answerAndAdvance(s, check, 2, 0).stockReviewed).toBe(true);
+  });
+
+  it("goes back to a card still unanswered after the last one", () => {
+    const check = [item(onion), item(beef)];
+    const s = answerAndAdvance(newOrder(), check, 1, 1);
+    expect(s).toMatchObject({ stockIndex: 0, stockReviewed: false });
   });
 
   it("finds the first unanswered stock card", () => {

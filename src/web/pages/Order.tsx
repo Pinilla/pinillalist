@@ -7,10 +7,11 @@ import { locationLabel } from "../../shared/locations.ts";
 import { defaultMode, mergeIngredients, subRecipeIds, type SubRecipeMode } from "../../shared/merge.ts";
 import {
   STEPS,
-  answerStock,
   firstUnanswered,
   loadOrder,
+  answerAndAdvance,
   newOrder,
+  openStockCheck,
   orderLines,
   pickRecipe,
   toggleRecipe,
@@ -97,9 +98,8 @@ export function OrderPage() {
   const go = (step: number) => {
     setState((s) => {
       const next = { ...s, step: Math.max(0, Math.min(STEPS.length - 1, step)) };
-      // Opening the stock check with new cards (a recipe or extra picked since) starts at the first one.
-      const unanswered = firstUnanswered(s, check);
-      return next.step === 1 && unanswered < check.length ? { ...next, stockIndex: unanswered, stockReviewed: false } : next;
+      // The stock check always opens on a card, the first unanswered one if any, never on the summary.
+      return next.step === 1 ? openStockCheck(next, check) : next;
     });
     window.scrollTo(0, 0);
   };
@@ -201,6 +201,18 @@ function PickRecipes({ state, setState }: StepProps) {
   return (
     <div className="stack pick">
       <div className="stack">
+        {!desktop && state.recipeIds.length > 0 && (
+          <section className="picked-strip" aria-label="This week">
+            {state.recipeIds.map((id) => (
+              <span key={id} className="pchip">
+                <span>{nameById.get(id) ?? "Deleted recipe"}</span>
+                <button aria-label={`Unpick ${nameById.get(id) ?? "recipe"}`} onClick={() => setState((s) => unpickRecipe(s, id))}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </section>
+        )}
         <p className="muted">
           {state.recipeIds.length === 0
             ? "Tap the recipes you'll cook this week."
@@ -477,16 +489,7 @@ function StockCheck({
       answer={state.stock[item.groceryId]}
       onBack={index > 0 ? () => setState((s) => ({ ...s, stockIndex: index - 1 })) : undefined}
       onSummary={allAnswered ? () => setState((s) => ({ ...s, stockReviewed: true })) : undefined}
-      onAnswer={(quantity) =>
-        setState((s) => {
-          const next = answerStock(s, item.groceryId, quantity);
-          const after = check.findIndex((m, i) => i > index && next.stock[m.groceryId] === undefined);
-          const unanswered = after !== -1 ? after : firstUnanswered(next, check);
-          return unanswered === check.length
-            ? { ...next, stockReviewed: true }
-            : { ...next, stockIndex: unanswered, stockReviewed: false };
-        })
-      }
+      onAnswer={(quantity) => setState((s) => answerAndAdvance(s, check, index, quantity))}
     />
   );
 }
