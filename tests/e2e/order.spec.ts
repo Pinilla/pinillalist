@@ -24,7 +24,8 @@ test("a wrong password stays on the login page", async ({ page }) => {
 test("a full weekly order builds the right Walmart and Amazon cart links", async ({ page }) => {
   await login(page);
 
-  // 1. Pick recipes
+  // 1. Pick recipes. It's the first step, so there's no Back button.
+  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   await page.getByRole("button", { name: "Chili" }).click();
   await page.getByRole("button", { name: "Tacos" }).click();
   await expect(page.getByText("2 chosen.")).toBeVisible();

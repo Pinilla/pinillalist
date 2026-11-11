@@ -123,7 +123,7 @@ export function OrderPage() {
   if (!loaded) return <main className="wrap empty">Loading…</main>;
 
   return (
-    <main className={`wrap stack order${state.step >= 1 && state.step <= 2 ? " narrow-step" : ""}`}>
+    <main className={`wrap stack order${state.step === 0 ? " pick-step" : ""}${state.step >= 1 && state.step <= 2 ? " narrow-step" : ""}`}>
       <div>
         <div className="row between">
           <span className="label">
@@ -171,9 +171,11 @@ export function OrderPage() {
 
       <div className="sticky-foot">
         <div className="row nowrap">
-          <button className="btn ghost" disabled={state.step === 0} onClick={() => go(state.step - 1)}>
-            Back
-          </button>
+          {state.step > 0 && (
+            <button className="btn ghost" onClick={() => go(state.step - 1)}>
+              Back
+            </button>
+          )}
           {state.step < STEPS.length - 1 && (
             <button className="btn grow" onClick={() => go(state.step + 1)}>
               Next: {STEPS[state.step + 1]}
