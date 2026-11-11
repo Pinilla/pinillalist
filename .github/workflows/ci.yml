@@ -17,7 +17,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npx playwright install --with-deps chromium
+      # The runner already has the libraries Chromium needs. --with-deps also
+      # installed extra fonts from Ubuntu's mirrors, which failed CI when they were down.
+      - run: npx playwright install chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
