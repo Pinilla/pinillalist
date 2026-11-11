@@ -123,6 +123,11 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .steps button { height: 6px; border-radius: 3px; background: var(--line); border: 0; padding: 0; }
 .steps button.done { background: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px 20px; text-align: center; display: flex; flex-direction: column; gap: 10px; min-height: 220px; justify-content: center; }
+/* Phone: the picked recipes stay at the top of Pick recipes while scrolling the grid. */
+.picked-strip { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; margin: -8px 0 0; background: var(--bg); }
+.pchip { display: inline-flex; align-items: center; gap: 2px; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 0.9rem; font-weight: 600; max-width: 100%; }
+.pchip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pchip button { border: 0; background: rgb(255 255 255 / 0.2); color: #fff; width: 26px; height: 26px; border-radius: 999px; font-size: 1.05rem; line-height: 1; cursor: pointer; flex-shrink: 0; }
 .sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.4); display: flex; align-items: flex-end; justify-content: center; }
 .sheet { background: var(--surface); width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); }
 .sheet h2 { margin: 0; }
@@ -134,7 +139,12 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .segmented button + button { border-left: 1px solid var(--line); }
 .segmented button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 700; }
 @media (min-width: 900px) {
-  .sheet-backdrop { align-items: center; }
+  /* Phone: the picked recipes stay at the top of Pick recipes while scrolling the grid. */
+.picked-strip { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; margin: -8px 0 0; background: var(--bg); }
+.pchip { display: inline-flex; align-items: center; gap: 2px; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 0.9rem; font-weight: 600; max-width: 100%; }
+.pchip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pchip button { border: 0; background: rgb(255 255 255 / 0.2); color: #fff; width: 26px; height: 26px; border-radius: 999px; font-size: 1.05rem; line-height: 1; cursor: pointer; flex-shrink: 0; }
+.sheet-backdrop { align-items: center; }
   .sheet { border-radius: 18px; }
 }
 .card .where { color: var(--accent); }
