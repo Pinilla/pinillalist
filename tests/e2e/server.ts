@@ -36,7 +36,8 @@ repo.createRecipe(db, {
   collectionIds: [dinner.id],
   ingredients: [ing("Onion", "1"), ing("Tortillas", "8")],
 });
-repo.createRecipe(db, { ...base, name: "Cookies", collectionIds: [], ingredients: [ing("Flour", "2 cups")] });
+const desserts = repo.listCollections(db).find((c) => c.name === "Desserts")!;
+repo.createRecipe(db, { ...base, name: "Cookies", collectionIds: [desserts.id], ingredients: [ing("Flour", "2 cups")] });
 // Pozole has optional toppings and a salsa made from another recipe.
 const salsa = repo.createRecipe(db, { ...base, name: "Salsa verde", collectionIds: [], ingredients: [ing("Tomatillos", "1 lb"), ing("Lime", "1", "juiced")] });
 repo.createRecipe(db, {

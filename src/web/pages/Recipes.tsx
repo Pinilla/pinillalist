@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { filterRecipes } from "../../shared/filters.ts";
 import type { IngredientRow, Recipe } from "../../shared/types.ts";
 import { api, photoUrl } from "../api.ts";
-import { Page, Thumb, minutes, toast } from "../components.tsx";
+import { CollectionChips, Page, Thumb, minutes, toast } from "../components.tsx";
 import { useData } from "../data.tsx";
 
 export function RecipesPage() {
   const { recipes, collections } = useData();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<number | null>(null);
-  const shown = recipes.filter(
-    (r) => (filter === null || r.collectionIds.includes(filter)) && (!query || r.name.toLowerCase().includes(query.toLowerCase())),
-  );
+  const [chosen, setChosen] = useState<number[]>([]);
+  const shown = filterRecipes(recipes, chosen, query);
   return (
     <Page
       title="Recipes"
@@ -22,16 +21,7 @@ export function RecipesPage() {
       }
     >
       <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
-      <div className="chips" role="group" aria-label="Collections">
-        <button className={`chip${filter === null ? " on" : ""}`} onClick={() => setFilter(null)}>
-          All
-        </button>
-        {collections.map((c) => (
-          <button key={c.id} className={`chip${filter === c.id ? " on" : ""}`} onClick={() => setFilter(c.id)}>
-            {c.name}
-          </button>
-        ))}
-      </div>
+      <CollectionChips collections={collections} chosen={chosen} onChange={setChosen} />
       {shown.length === 0 ? (
         <p className="empty">No recipes here.</p>
       ) : (

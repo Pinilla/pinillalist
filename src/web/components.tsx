@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { formatNumber } from "../shared/amounts.ts";
-import { STORE_NAMES, type Product } from "../shared/types.ts";
+import { toggleCollection } from "../shared/filters.ts";
+import { STORE_NAMES, type Collection, type Product } from "../shared/types.ts";
 import { photoUrl } from "./api.ts";
 
 export function Stepper({
@@ -29,6 +30,36 @@ export function Stepper({
         +
       </button>
     </span>
+  );
+}
+
+/**
+ * The collection chips above a recipe grid. Each chip turns on or off on its
+ * own, and the grid shows recipes in any chip that's on. All turns them all off.
+ */
+export function CollectionChips({
+  collections,
+  chosen,
+  onChange,
+}: {
+  collections: Collection[];
+  chosen: number[];
+  onChange: (chosen: number[]) => void;
+}) {
+  return (
+    <div className="chips" role="group" aria-label="Collections">
+      <button className={`chip${chosen.length === 0 ? " on" : ""}`} aria-pressed={chosen.length === 0} onClick={() => onChange([])}>
+        All
+      </button>
+      {collections.map((c) => {
+        const on = chosen.includes(c.id);
+        return (
+          <button key={c.id} className={`chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => onChange(toggleCollection(chosen, c.id))}>
+            {c.name}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

@@ -20,7 +20,8 @@ export interface OrderState {
   recipeIds: number[];
   /** Choices made when picking each recipe, by recipe id. */
   choices: Record<string, RecipeChoice>;
-  collectionFilter: number | null;
+  /** Collection chips that are on in Pick recipes. Empty shows every recipe. */
+  collectionFilters: number[];
   /** Stock check answers, for recipe groceries and Essentials alike: grocery id to product quantity. 0 means there's enough at home. */
   stock: Record<string, number>;
   stockIndex: number;
@@ -40,7 +41,7 @@ export function newOrder(): OrderState {
     step: 0,
     recipeIds: [],
     choices: {},
-    collectionFilter: null,
+    collectionFilters: [],
     stock: {},
     stockIndex: 0,
     stockReviewed: false,
@@ -64,11 +65,15 @@ const V2_STEP = [0, 1, 1, 2, 3];
 export function loadOrder(saved: string | null): OrderState {
   if (!saved) return newOrder();
   try {
-    const parsed = JSON.parse(saved) as Omit<Partial<OrderState>, "version" | "stock"> & {
+    const raw = JSON.parse(saved) as Omit<Partial<OrderState>, "version" | "stock"> & {
       version?: number;
       stock?: Record<string, unknown>;
       essentials?: Record<string, number>;
+      /** Before the chips combined, one collection id or null. */
+      collectionFilter?: number | null;
     };
+    const { collectionFilter, ...parsed } = raw;
+    if (parsed.collectionFilters === undefined && typeof collectionFilter === "number") parsed.collectionFilters = [collectionFilter];
     if (parsed.version === 3) return { ...newOrder(), ...parsed, stock: (parsed.stock ?? {}) as Record<string, number>, version: 3 };
     if (parsed.version !== 1 && parsed.version !== 2) return newOrder();
     const stock: Record<string, number> = {};
