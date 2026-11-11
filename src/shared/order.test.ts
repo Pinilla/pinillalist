@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CheckItem } from "./stock.ts";
-import { answerStock, firstUnanswered, loadOrder, newOrder, orderLines, toggleRecipe } from "./order.ts";
+import { answerStock, firstUnanswered, loadOrder, newOrder, orderLines, pickRecipe, toggleRecipe } from "./order.ts";
 import type { Grocery } from "./types.ts";
 
 const walmart = { store: "walmart" as const, storeId: "51259212", name: "Onions 3 lb", size: "3 lb", imageUrl: "", soldBy: "each" as const };
@@ -56,6 +56,19 @@ describe("order state", () => {
     s = toggleRecipe(s, 2);
     expect(s.recipeIds).toEqual([5, 2]);
     expect(toggleRecipe(s, 5).recipeIds).toEqual([2]);
+  });
+
+  it("keeps the choices made when picking a recipe, and drops them when it's unpicked", () => {
+    const choice = { optional: [41], subRecipes: { "50": "buy" as const } };
+    let s = pickRecipe(newOrder(), 5, choice);
+    expect(s.recipeIds).toEqual([5]);
+    expect(s.choices).toEqual({ "5": choice });
+    s = pickRecipe(s, 5, { optional: [], subRecipes: {} });
+    expect(s.recipeIds).toEqual([5]);
+    expect(s.choices["5"]!.optional).toEqual([]);
+    s = toggleRecipe(s, 5);
+    expect(s.recipeIds).toEqual([]);
+    expect(s.choices).toEqual({});
   });
 
   it("finds the first unanswered stock card", () => {

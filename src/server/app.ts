@@ -98,6 +98,8 @@ function recipeInput(b: Record<string, unknown>): repo.RecipeInput {
         groceryName: str(r.groceryName, "groceryName"),
         cookingAmount: str(r.cookingAmount, "cookingAmount", ""),
         preparation: str(r.preparation, "preparation", ""),
+        optional: bool(r.optional, "optional") ?? false,
+        subRecipeId: r.subRecipeId === undefined || r.subRecipeId === null ? null : (num(r.subRecipeId, "subRecipeId") as number),
       };
     }),
   };

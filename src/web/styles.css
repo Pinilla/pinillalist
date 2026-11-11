@@ -123,6 +123,20 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .steps button { height: 6px; border-radius: 3px; background: var(--line); border: 0; padding: 0; }
 .steps button.done { background: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px 20px; text-align: center; display: flex; flex-direction: column; gap: 10px; min-height: 220px; justify-content: center; }
+.sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.4); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); }
+.sheet h2 { margin: 0; }
+.sheet .check { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.sheet .check input { width: 22px; height: 22px; flex-shrink: 0; }
+.sheet .nested { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.segmented { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.segmented button { flex: 1; font: inherit; padding: 9px 6px; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; }
+.segmented button + button { border-left: 1px solid var(--line); }
+.segmented button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 700; }
+@media (min-width: 900px) {
+  .sheet-backdrop { align-items: center; }
+  .sheet { border-radius: 18px; }
+}
 .card .where { color: var(--accent); }
 .card .essential { margin: 0; }
 .card .uses { list-style: disc; text-align: left; margin: 4px auto; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
@@ -155,6 +169,9 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .ing-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; border-bottom: 1px solid var(--line); }
 .ing-row:last-child { border-bottom: 0; }
 .ing-row .full { grid-column: 1 / -1; }
+.ing-row .extras { align-items: flex-end; }
+.check-inline { display: flex; gap: 8px; align-items: center; padding: 10px 0; white-space: nowrap; }
+.check-inline input { width: 20px; height: 20px; }
 
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar) + 16px); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; max-width: calc(100% - 32px); }
 .empty { text-align: center; padding: 32px 16px; color: var(--muted); }
@@ -216,6 +233,7 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
   .ing-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px 10px; align-items: end; }
   .ing-row .full { grid-column: auto; }
   .ing-row .heading-field { grid-column: 1 / 4; }
+  .ing-row .full.extras { grid-column: 1 / 4; }
   .ing-row > .row { flex-wrap: nowrap; }
 
   /* Catalog */

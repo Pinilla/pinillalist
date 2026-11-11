@@ -113,7 +113,16 @@ export function RecipePage({ id }: { id: number }) {
                     {row.cookingAmount && <strong>{row.cookingAmount} </strong>}
                     <Link href={`/catalog/${row.groceryId}`}>{row.groceryName}</Link>
                     {row.preparation && <span className="muted">, {row.preparation}</span>}
+                    {row.subRecipe && (
+                      <>
+                        <br />
+                        <span className="small">
+                          Made from <Link href={`/recipes/${row.subRecipe.id}`}>{row.subRecipe.name}</Link>
+                        </span>
+                      </>
+                    )}
                   </span>
+                  {row.optional && <span className="badge">optional</span>}
                 </div>
               ),
             )}
@@ -156,7 +165,16 @@ export function RecipePage({ id }: { id: number }) {
 
 type EditRow =
   | { key: number; kind: "heading"; text: string }
-  | { key: number; kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string };
+  | {
+      key: number;
+      kind: "ingredient";
+      groceryName: string;
+      cookingAmount: string;
+      preparation: string;
+      optional: boolean;
+      /** "" for none, or a recipe id as text, to match the select. */
+      subRecipeId: string;
+    };
 
 let nextKey = 1;
 
@@ -169,14 +187,24 @@ function toEditRow(row: IngredientRow): EditRow {
         groceryName: row.groceryName,
         cookingAmount: row.cookingAmount,
         preparation: row.preparation,
+        optional: row.optional,
+        subRecipeId: row.subRecipe ? String(row.subRecipe.id) : "",
       };
 }
 
-const blankIngredient = (): EditRow => ({ key: nextKey++, kind: "ingredient", groceryName: "", cookingAmount: "", preparation: "" });
+const blankIngredient = (): EditRow => ({
+  key: nextKey++,
+  kind: "ingredient",
+  groceryName: "",
+  cookingAmount: "",
+  preparation: "",
+  optional: false,
+  subRecipeId: "",
+});
 
 export function RecipeEditPage({ id }: { id: number | null }) {
   const [, navigate] = useLocation();
-  const { collections, groceries, reload } = useData();
+  const { collections, groceries, recipes: allRecipes, reload } = useData();
   const [loading, setLoading] = useState(id !== null);
   const [name, setName] = useState("");
   const [servings, setServings] = useState("");
@@ -243,6 +271,8 @@ export function RecipeEditPage({ id }: { id: number | null }) {
               groceryName: r.groceryName,
               cookingAmount: r.cookingAmount,
               preparation: r.preparation,
+              optional: r.optional,
+              subRecipeId: r.subRecipeId ? Number(r.subRecipeId) : null,
             },
       ),
     };
@@ -370,6 +400,25 @@ export function RecipeEditPage({ id }: { id: number | null }) {
                     <span>Preparation</span>
                     <input type="text" value={row.preparation} onChange={(e) => update(row.key, { preparation: e.target.value })} placeholder="diced" />
                   </label>
+                  <div className="row full extras">
+                    <label className="check-inline">
+                      <input type="checkbox" checked={row.optional} onChange={(e) => update(row.key, { optional: e.target.checked })} />
+                      Optional
+                    </label>
+                    <label className="field grow">
+                      <span>Made from recipe</span>
+                      <select value={row.subRecipeId} onChange={(e) => update(row.key, { subRecipeId: e.target.value })}>
+                        <option value="">None, it's bought</option>
+                        {allRecipes
+                          .filter((r) => r.id !== id)
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
                 </>
               )}
               <div className="row full">

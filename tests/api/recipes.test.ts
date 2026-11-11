@@ -41,6 +41,46 @@ describe("recipes", () => {
     expect(saved.ingredients.map((i: { groceryName: string }) => i.groceryName)).toEqual(["Carrot"]);
   });
 
+  it("saves optional ingredients and ingredients made from another recipe", async () => {
+    const { call } = await setup();
+    const { body: sauce } = await call("POST", "/api/recipes", recipeBody("Salsa verde", [{ kind: "ingredient", groceryName: "Tomatillos" }]));
+    const { body: pozole } = await call(
+      "POST",
+      "/api/recipes",
+      recipeBody("Pozole", [
+        { kind: "ingredient", groceryName: "Hominy" },
+        { kind: "ingredient", groceryName: "Radishes", optional: true },
+        { kind: "ingredient", groceryName: "Green salsa", subRecipeId: sauce.id },
+      ]),
+    );
+    expect(pozole.ingredients.map((i: { groceryName: string; optional: boolean; subRecipe: unknown }) => [i.groceryName, i.optional, i.subRecipe])).toEqual([
+      ["Hominy", false, null],
+      ["Radishes", true, null],
+      ["Green salsa", false, { id: sauce.id, name: "Salsa verde" }],
+    ]);
+    const { body: list } = await call("GET", "/api/recipes");
+    expect(list.map((r: { name: string; hasExtras: boolean }) => [r.name, r.hasExtras])).toEqual([
+      ["Pozole", true],
+      ["Salsa verde", false],
+    ]);
+  });
+
+  it("keeps the grocery when the recipe an ingredient is made from is deleted", async () => {
+    const { call } = await setup();
+    const { body: sauce } = await call("POST", "/api/recipes", recipeBody("Salsa verde", []));
+    const { body: pozole } = await call("POST", "/api/recipes", recipeBody("Pozole", [{ kind: "ingredient", groceryName: "Green salsa", subRecipeId: sauce.id }]));
+    expect((await call("DELETE", `/api/recipes/${sauce.id}`)).status).toBe(204);
+    const { body } = await call("GET", `/api/recipes/${pozole.id}`);
+    expect(body.ingredients[0]).toMatchObject({ groceryName: "Green salsa", subRecipe: null });
+  });
+
+  it("won't let a recipe use itself or a recipe that doesn't exist", async () => {
+    const { call } = await setup();
+    const { body: r } = await call("POST", "/api/recipes", recipeBody("Soup", []));
+    expect((await call("PUT", `/api/recipes/${r.id}`, recipeBody("Soup", [{ kind: "ingredient", groceryName: "Soup", subRecipeId: r.id }]))).status).toBe(409);
+    expect((await call("POST", "/api/recipes", recipeBody("Stew", [{ kind: "ingredient", groceryName: "Stock", subRecipeId: 999 }]))).status).toBe(409);
+  });
+
   it("rejects a recipe without a name", async () => {
     const { call } = await setup();
     expect((await call("POST", "/api/recipes", recipeBody("  ", []))).status).toBe(409);

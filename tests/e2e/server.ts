@@ -19,8 +19,8 @@ setPassword(db, PASSWORD);
 
 const dinner = repo.createCollection(db, "Easy Dinner");
 repo.createCollection(db, "Desserts");
-const ing = (groceryName: string, cookingAmount: string, preparation = "") =>
-  ({ kind: "ingredient", groceryName, cookingAmount, preparation }) as const;
+const ing = (groceryName: string, cookingAmount: string, preparation = "", extra: { optional?: boolean; subRecipeId?: number } = {}) =>
+  ({ kind: "ingredient", groceryName, cookingAmount, preparation, ...extra }) as const;
 const base = { servings: "", prepTime: null, cookTime: null, steps: [], note: "", sourceName: "", sourceUrl: "", rating: null };
 
 repo.createRecipe(db, {
@@ -37,6 +37,19 @@ repo.createRecipe(db, {
   ingredients: [ing("Onion", "1"), ing("Tortillas", "8")],
 });
 repo.createRecipe(db, { ...base, name: "Cookies", collectionIds: [], ingredients: [ing("Flour", "2 cups")] });
+// Pozole has optional toppings and a salsa made from another recipe.
+const salsa = repo.createRecipe(db, { ...base, name: "Salsa verde", collectionIds: [], ingredients: [ing("Tomatillos", "1 lb"), ing("Lime", "1", "juiced")] });
+repo.createRecipe(db, {
+  ...base,
+  name: "Pozole",
+  collectionIds: [],
+  ingredients: [
+    ing("Hominy", "2 cans"),
+    ing("Green salsa", "1 cup", "", { subRecipeId: salsa.id }),
+    ing("Radishes", "", "sliced", { optional: true }),
+    ing("Cabbage", "", "shredded", { optional: true }),
+  ],
+});
 
 const product = (store: Product["store"], storeId: string, name: string, soldBy: Product["soldBy"] = "each"): Product => ({
   store, storeId, name, size: "", imageUrl: "", soldBy,

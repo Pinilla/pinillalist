@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 /** The household's catalog of groceries. `nameKey` is the lowercased name, kept unique. */
 export const groceries = sqliteTable(
@@ -77,6 +77,13 @@ export const ingredients = sqliteTable(
     groceryId: integer("grocery_id").references(() => groceries.id),
     cookingAmount: text("cooking_amount").notNull().default(""),
     preparation: text().notNull().default(""),
+    /** Optional ingredients reach the weekly order only when someone picks them along with the recipe. */
+    optional: integer({ mode: "boolean" }).notNull().default(false),
+    /**
+     * Set when this ingredient is something the household makes from another recipe,
+     * such as a sauce. The grocery is then what to buy instead of making it.
+     */
+    subRecipeId: integer("sub_recipe_id").references((): AnySQLiteColumn => recipes.id, { onDelete: "set null" }),
     /** The original AnyList text, kept for reference after import. */
     raw: text().notNull().default(""),
   },

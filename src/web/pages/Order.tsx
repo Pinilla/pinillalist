@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { formatNumber } from "../../shared/amounts.ts";
 import { buildCartPlan, type OrderLine } from "../../shared/carts.ts";
 import { locationLabel } from "../../shared/locations.ts";
-import { mergeIngredients } from "../../shared/merge.ts";
+import { defaultMode, mergeIngredients, subRecipeIds, type SubRecipeMode } from "../../shared/merge.ts";
 import {
   STEPS,
   answerStock,
@@ -11,11 +11,14 @@ import {
   loadOrder,
   newOrder,
   orderLines,
+  pickRecipe,
   toggleRecipe,
+  unpickRecipe,
   type OrderState,
+  type RecipeChoice,
 } from "../../shared/order.ts";
 import { buildStockCheck, type CheckItem } from "../../shared/stock.ts";
-import { STORE_NAMES, type Grocery, type Recipe } from "../../shared/types.ts";
+import { STORE_NAMES, type Grocery, type Recipe, type RecipeSummary } from "../../shared/types.ts";
 import { api } from "../api.ts";
 import { Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
 import { useData } from "../data.tsx";
@@ -47,6 +50,7 @@ export function OrderPage() {
   const { groceryById, lists, loaded } = useData();
   const [state, setStateRaw] = useState<OrderState>(() => loadOrder(readSaved()));
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [subRecipes, setSubRecipes] = useState<Map<number, Recipe>>(new Map());
   const [recipesFor, setRecipesFor] = useState("");
 
   const setState = (update: (s: OrderState) => OrderState) =>
@@ -56,22 +60,25 @@ export function OrderPage() {
       return next;
     });
 
-  // Fetch the chosen recipes in full, in the order they were picked.
+  // Fetch the chosen recipes in full, in the order they were picked, and the recipes their ingredients are made from.
   const idsKey = state.recipeIds.join(",");
   useEffect(() => {
     if (!idsKey) {
       setRecipes([]);
+      setSubRecipes(new Map());
+      setRecipesFor("");
       return;
     }
     let live = true;
-    api
-      .get<Recipe[]>(`/api/recipes?ids=${idsKey}`)
-      .then((r) => {
-        if (!live) return;
-        setRecipes(r);
-        setRecipesFor(idsKey);
-      })
-      .catch((err: Error) => toast(err.message));
+    (async () => {
+      const picked = await api.get<Recipe[]>(`/api/recipes?ids=${idsKey}`);
+      const subIds = subRecipeIds(picked);
+      const subs = subIds.length ? await api.get<Recipe[]>(`/api/recipes?ids=${subIds.join(",")}`) : [];
+      if (!live) return;
+      setRecipes(picked);
+      setSubRecipes(new Map(subs.map((r) => [r.id, r])));
+      setRecipesFor(idsKey);
+    })().catch((err: Error) => toast(err.message));
     return () => {
       live = false;
     };
@@ -79,17 +86,38 @@ export function OrderPage() {
 
   const essentials = useMemo(() => lists.find((l) => l.kind === "essentials")?.items ?? [], [lists]);
   const check = useMemo(
-    () => buildStockCheck(mergeIngredients(recipes, groceryById), essentials, groceryById),
-    [recipes, essentials, groceryById],
+    () => buildStockCheck(mergeIngredients(recipes, groceryById, state.choices, subRecipes), essentials, groceryById),
+    [recipes, subRecipes, state.choices, essentials, groceryById],
   );
   // Until the picked recipes arrive, the walk would be Essentials only and then reshuffle.
   const recipesLoading = idsKey !== "" && recipesFor !== idsKey;
   const lines = useMemo(() => orderLines(state, check, groceryById), [state, check, groceryById]);
 
   const go = (step: number) => {
-    setState((s) => ({ ...s, step: Math.max(0, Math.min(STEPS.length - 1, step)) }));
+    setState((s) => {
+      const next = { ...s, step: Math.max(0, Math.min(STEPS.length - 1, step)) };
+      // Opening the stock check with new cards (a recipe or extra picked since) starts at the first one.
+      const unanswered = firstUnanswered(s, check);
+      return next.step === 1 && unanswered < check.length ? { ...next, stockIndex: unanswered, stockReviewed: false } : next;
+    });
     window.scrollTo(0, 0);
   };
+
+
+  // When the cards change while the stock check is open (the picked recipes finished loading), go to the first new one.
+  const checkKey = check.map((c) => c.groceryId).join(",");
+  useEffect(() => {
+    setStateRaw((s) => {
+      if (s.step !== 1) return s;
+      const unanswered = firstUnanswered(s, check);
+      if (unanswered === check.length || s.stock[check[Math.min(s.stockIndex, check.length - 1)]?.groceryId ?? -1] === undefined) return s;
+      const next = { ...s, stockIndex: unanswered, stockReviewed: false };
+      save(next);
+      return next;
+    });
+    // Only when the set of cards changes, so moving back to an answered card stays put.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkKey]);
 
   if (!loaded) return <main className="wrap empty">Loading…</main>;
 
@@ -162,7 +190,9 @@ function PickRecipes({ state, setState }: StepProps) {
   const { recipes, collections } = useData();
   const desktop = useDesktop();
   const [query, setQuery] = useState("");
+  const [sheetFor, setSheetFor] = useState<RecipeSummary | null>(null);
   const filter = state.collectionFilter;
+  const tap = (r: RecipeSummary) => (r.hasExtras ? setSheetFor(r) : setState((s) => toggleRecipe(s, r.id)));
   const nameById = new Map(recipes.map((r) => [r.id, r.name]));
   const shown = recipes.filter(
     (r) =>
@@ -200,7 +230,7 @@ function PickRecipes({ state, setState }: StepProps) {
             {shown.map((r) => {
               const on = state.recipeIds.includes(r.id);
               return (
-                <button key={r.id} className={`tile${on ? " on" : ""}`} aria-pressed={on} onClick={() => setState((s) => toggleRecipe(s, r.id))}>
+                <button key={r.id} className={`tile${on ? " on" : ""}`} aria-pressed={on} onClick={() => tap(r)}>
                   <Thumb photo={r.photo} name={r.name} className="tile-img" />
                   <span className="t">{r.name}</span>
                   {on && (
@@ -224,7 +254,7 @@ function PickRecipes({ state, setState }: StepProps) {
               {state.recipeIds.map((id) => (
                 <div key={id} className="li">
                   <span className="grow name">{nameById.get(id) ?? "Deleted recipe"}</span>
-                  <button className="btn plain small" aria-label={`Unpick ${nameById.get(id) ?? "recipe"}`} onClick={() => setState((s) => toggleRecipe(s, id))}>
+                  <button className="btn plain small" aria-label={`Unpick ${nameById.get(id) ?? "recipe"}`} onClick={() => setState((s) => unpickRecipe(s, id))}>
                     Remove
                   </button>
                 </div>
@@ -233,6 +263,153 @@ function PickRecipes({ state, setState }: StepProps) {
           )}
         </aside>
       )}
+      {sheetFor && (
+        <ExtrasSheet
+          summary={sheetFor}
+          picked={state.recipeIds.includes(sheetFor.id)}
+          choice={state.choices[sheetFor.id]}
+          onSave={(choice) => {
+            setState((s) => pickRecipe(s, sheetFor.id, choice));
+            setSheetFor(null);
+          }}
+          onRemove={() => {
+            setState((s) => unpickRecipe(s, sheetFor.id));
+            setSheetFor(null);
+          }}
+          onClose={() => setSheetFor(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+const MODES: { mode: SubRecipeMode; label: string }[] = [
+  { mode: "make", label: "Make it" },
+  { mode: "buy", label: "Buy it" },
+  { mode: "have", label: "Have it" },
+];
+
+/**
+ * Asks about a recipe's extras as it's picked: whether to make, buy or skip
+ * each ingredient made from another recipe (make is the default), and which
+ * optional ingredients to try this week (none by default).
+ */
+function ExtrasSheet({
+  summary,
+  picked,
+  choice,
+  onSave,
+  onRemove,
+  onClose,
+}: {
+  summary: RecipeSummary;
+  picked: boolean;
+  choice: RecipeChoice | undefined;
+  onSave: (choice: RecipeChoice) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const { groceryById } = useData();
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [optional, setOptional] = useState<number[]>(choice?.optional ?? []);
+  const [modes, setModes] = useState<Record<string, SubRecipeMode>>(choice?.subRecipes ?? {});
+
+  useEffect(() => {
+    let live = true;
+    api
+      .get<Recipe>(`/api/recipes/${summary.id}`)
+      .then((r) => live && setRecipe(r))
+      .catch((err: Error) => toast(err.message));
+    return () => {
+      live = false;
+    };
+  }, [summary.id]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const rows = recipe?.ingredients.flatMap((r) => (r.kind === "ingredient" ? [r] : [])) ?? [];
+  const nested = rows.filter((r) => r.subRecipe);
+  const extras = rows.filter((r) => r.optional && !r.subRecipe);
+  const line = (r: (typeof rows)[number]) => [r.cookingAmount, r.groceryName].filter(Boolean).join(" ") + (r.preparation ? `, ${r.preparation}` : "");
+
+  return (
+    <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet stack" role="dialog" aria-modal="true" aria-label={summary.name}>
+        <h2>{summary.name}</h2>
+        {!recipe && <p className="muted">Loading…</p>}
+        {nested.length > 0 && (
+          <section className="stack tight">
+            <span className="label">Made from other recipes</span>
+            {nested.map((r) => {
+              const mode = modes[r.id] ?? defaultMode(r);
+              const product = groceryById.get(r.groceryId)?.product;
+              return (
+                <div key={r.id} className="stack tight nested">
+                  <div>
+                    <strong>{r.subRecipe!.name}</strong>
+                    {r.cookingAmount && <span className="muted">, {r.cookingAmount}</span>}
+                    {r.optional && <span className="badge">optional</span>}
+                  </div>
+                  <div className="segmented" role="group" aria-label={`${r.subRecipe!.name}: make, buy or have`}>
+                    {MODES.map((m) => (
+                      <button
+                        key={m.mode}
+                        type="button"
+                        aria-pressed={mode === m.mode}
+                        onClick={() => setModes((ms) => ({ ...ms, [r.id]: m.mode }))}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="small muted">
+                    {mode === "make" && `Adds the ${r.subRecipe!.name} ingredients to the stock check.`}
+                    {mode === "buy" && `Adds ${r.groceryName}${product ? ` (${productLabel(product)})` : ""} to the stock check.`}
+                    {mode === "have" && "Already made, so nothing is added."}
+                  </span>
+                </div>
+              );
+            })}
+          </section>
+        )}
+        {extras.length > 0 && (
+          <section className="stack tight">
+            <span className="label">Optional. Try any this week?</span>
+            {extras.map((r) => (
+              <label key={r.id} className="check">
+                <input
+                  type="checkbox"
+                  checked={optional.includes(r.id)}
+                  onChange={(e) => setOptional((o) => (e.target.checked ? [...o, r.id] : o.filter((id) => id !== r.id)))}
+                />
+                <span>{line(r)}</span>
+              </label>
+            ))}
+          </section>
+        )}
+        <div className="row nowrap">
+          {picked ? (
+            <button className="btn ghost" onClick={onRemove}>
+              Unpick
+            </button>
+          ) : (
+            <button className="btn ghost" onClick={onClose}>
+              Cancel
+            </button>
+          )}
+          <button
+            className="btn grow"
+            disabled={!recipe}
+            onClick={() => onSave({ optional: optional.filter((id) => extras.some((r) => r.id === id)), subRecipes: modes })}
+          >
+            {picked ? "Save" : "Add to this week"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
