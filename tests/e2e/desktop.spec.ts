@@ -46,12 +46,12 @@ test("Back and Next are centered on every step, pinned to the bottom on Pick rec
   const foot = page.locator(".sticky-foot");
   const body = page.locator(".step-body");
   const main = page.locator("main.order");
-  const place = async () => {
+  const place = async (centeredOnPage = true) => {
     const buttons = foot.getByRole("button");
     const first = (await buttons.first().boundingBox())!;
     const last = (await buttons.last().boundingBox())!;
     const [b, m] = [(await body.boundingBox())!, (await main.boundingBox())!];
-    expect(Math.abs((first.x + last.x + last.width) / 2 - (m.x + m.width / 2))).toBeLessThan(2);
+    if (centeredOnPage) expect(Math.abs((first.x + last.x + last.width) / 2 - (m.x + m.width / 2))).toBeLessThan(2);
     return { top: first.y, bottom: first.y + first.height, bodyTop: b.y, bodyBottom: b.y + b.height };
   };
 
@@ -59,7 +59,14 @@ test("Back and Next are centered on every step, pinned to the bottom on Pick rec
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 420 });
   const nextButton = page.getByRole("button", { name: "Next: Stock check" });
-  await place();
+  // Centered over the recipe grid, not the whole page with the "This week" panel.
+  const centerOf = (b: { x: number; width: number }) => b.x + b.width / 2;
+  for (const width of [1280, 1000]) {
+    await page.setViewportSize({ width, height: 420 });
+    const grid = (await page.locator(".pick .grid").boundingBox())!;
+    expect(Math.abs(centerOf((await nextButton.boundingBox())!) - centerOf(grid))).toBeLessThan(2);
+  }
+  await page.setViewportSize({ width: 1280, height: 420 });
   const pinned = (await nextButton.boundingBox())!;
   expect(pinned.y + pinned.height).toBeGreaterThan(420 - 40);
   expect(pinned.y + pinned.height).toBeLessThanOrEqual(420);
