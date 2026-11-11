@@ -237,7 +237,10 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
    * The bar sits after the grid, so at the end of the page the last row of recipes ends above it, not under it.
    */
   .order.pick-step > .sticky-foot { position: sticky; bottom: 0; z-index: 5; padding: 12px 0 16px; background: var(--bg); box-shadow: 0 -8px 16px -12px rgb(0 0 0 / 0.25); }
-  .pick { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+  /* Center Next over the recipe grid, not the whole page, by leaving out the "This week" column and the gap. */
+  .order.pick-step > .sticky-foot > div { margin-right: calc(var(--pick-aside) + var(--pick-gap)); }
+  .order { --pick-aside: 280px; --pick-gap: 24px; }
+  .pick { display: grid; grid-template-columns: minmax(0, 1fr) var(--pick-aside); gap: var(--pick-gap); align-items: start; }
   .chosen { position: sticky; top: 24px; max-height: calc(100vh - 140px); overflow-y: auto; }
   .cart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
   .cart-grid > :only-child { max-width: 560px; }
@@ -283,7 +286,7 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 
 /* Narrow desktop windows: keep two recipe tiles beside the picked list. */
 @media (min-width: 900px) and (max-width: 1199px) {
-  .pick { grid-template-columns: minmax(0, 1fr) 240px; }
+  .order { --pick-aside: 240px; }
   .pick .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 
