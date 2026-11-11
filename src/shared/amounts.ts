@@ -29,23 +29,3 @@ export function readNumber(text: string): { value: number; rest: string } | null
 export function formatNumber(n: number): string {
   return String(Math.round(n * 100) / 100);
 }
-
-const NO_PLURAL = new Set(["lb", "oz", "g", "kg", "ml", "l", "fl oz", "gal", "qt", "pt", "dozen"]);
-
-export function pluralize(word: string, n: number): string {
-  if (n === 1 || word === "" || NO_PLURAL.has(word.toLowerCase())) return word;
-  const lower = word.toLowerCase();
-  if (/(s|x|z|ch|sh)$/.test(lower)) return lower.endsWith("s") ? word : word + "es";
-  if (/[^aeiou]y$/.test(lower)) return word.slice(0, -1) + "ies";
-  if (/[^aeiou]o$/.test(lower)) return word + "es";
-  return word + "s";
-}
-
-/**
- * Shows a buying amount in the grocery's unit. A grocery with no unit is counted
- * by its own name, so 3 of Onion is "3 onions".
- */
-export function formatBuyingAmount(amount: number, unit: string, groceryName: string): string {
-  const word = unit || groceryName.toLowerCase();
-  return `${formatNumber(amount)} ${pluralize(word, amount)}`;
-}

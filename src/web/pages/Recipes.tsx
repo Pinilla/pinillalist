@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { formatBuyingAmount, formatNumber } from "../../shared/amounts.ts";
 import type { IngredientRow, Recipe } from "../../shared/types.ts";
 import { api, photoUrl } from "../api.ts";
 import { Page, Thumb, minutes, toast } from "../components.tsx";
@@ -73,7 +72,6 @@ export function RecipePage({ id }: { id: number }) {
     recipe.cookTime && `Cook ${minutes(recipe.cookTime)}`,
     recipe.rating && `${"★".repeat(recipe.rating)}`,
   ].filter(Boolean);
-  const needAmounts = recipe.ingredients.filter((i) => i.kind === "ingredient" && i.buyingAmount === null).length;
 
   return (
     <Page
@@ -103,12 +101,6 @@ export function RecipePage({ id }: { id: number }) {
           )}
           {facts.length > 0 && <p className="muted">{facts.join(" · ")}</p>}
           <h2>Ingredients</h2>
-          {needAmounts > 0 && (
-            <p className="note">
-              {needAmounts} ingredient{needAmounts === 1 ? " has" : "s have"} no buying amount yet. Edit the recipe to add them, or set them during
-              the stock check.
-            </p>
-          )}
           <div className="list">
             {recipe.ingredients.map((row) =>
               row.kind === "heading" ? (
@@ -122,13 +114,6 @@ export function RecipePage({ id }: { id: number }) {
                     <Link href={`/catalog/${row.groceryId}`}>{row.groceryName}</Link>
                     {row.preparation && <span className="muted">, {row.preparation}</span>}
                   </span>
-                  {row.buyingAmount !== null ? (
-                    <span className="badge" title="Buying amount">
-                      {formatBuyingAmount(row.buyingAmount, groceryById.get(row.groceryId)?.unit ?? "", row.groceryName)}
-                    </span>
-                  ) : (
-                    <span className="badge warn">no buying amount</span>
-                  )}
                 </div>
               ),
             )}
@@ -171,7 +156,7 @@ export function RecipePage({ id }: { id: number }) {
 
 type EditRow =
   | { key: number; kind: "heading"; text: string }
-  | { key: number; kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string; buyingAmount: string };
+  | { key: number; kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string };
 
 let nextKey = 1;
 
@@ -184,11 +169,10 @@ function toEditRow(row: IngredientRow): EditRow {
         groceryName: row.groceryName,
         cookingAmount: row.cookingAmount,
         preparation: row.preparation,
-        buyingAmount: row.buyingAmount === null ? "" : formatNumber(row.buyingAmount),
       };
 }
 
-const blankIngredient = (): EditRow => ({ key: nextKey++, kind: "ingredient", groceryName: "", cookingAmount: "", preparation: "", buyingAmount: "" });
+const blankIngredient = (): EditRow => ({ key: nextKey++, kind: "ingredient", groceryName: "", cookingAmount: "", preparation: "" });
 
 export function RecipeEditPage({ id }: { id: number | null }) {
   const [, navigate] = useLocation();
@@ -259,7 +243,6 @@ export function RecipeEditPage({ id }: { id: number | null }) {
               groceryName: r.groceryName,
               cookingAmount: r.cookingAmount,
               preparation: r.preparation,
-              buyingAmount: r.buyingAmount.trim() === "" ? null : Number(r.buyingAmount),
             },
       ),
     };
@@ -286,11 +269,6 @@ export function RecipeEditPage({ id }: { id: number | null }) {
   };
 
   if (loading) return <main className="wrap empty">Loading…</main>;
-
-  const unitFor = (groceryName: string) => {
-    const g = groceries.find((x) => x.name.toLowerCase() === groceryName.trim().toLowerCase());
-    return g ? g.unit || g.name.toLowerCase() : "";
-  };
 
   return (
     <Page
@@ -359,9 +337,6 @@ export function RecipeEditPage({ id }: { id: number | null }) {
         </label>
 
         <h2>Ingredients</h2>
-        <p className="small muted">
-          The buying amount is how much of the grocery to buy, in the unit you count at home, such as 1 onion for "1 cup diced onion".
-        </p>
         <datalist id="grocery-names">
           {groceries.map((g) => (
             <option key={g.id} value={g.name} />
@@ -394,17 +369,6 @@ export function RecipeEditPage({ id }: { id: number | null }) {
                   <label className="field">
                     <span>Preparation</span>
                     <input type="text" value={row.preparation} onChange={(e) => update(row.key, { preparation: e.target.value })} placeholder="diced" />
-                  </label>
-                  <label className="field full">
-                    <span>Buying amount{unitFor(row.groceryName) && ` (${unitFor(row.groceryName)})`}</span>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="any"
-                      value={row.buyingAmount}
-                      onChange={(e) => update(row.key, { buyingAmount: e.target.value })}
-                    />
                   </label>
                 </>
               )}

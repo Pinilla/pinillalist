@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { formatBuyingAmount, formatNumber } from "../../shared/amounts.ts";
+import { formatNumber } from "../../shared/amounts.ts";
 import { buildCartPlan, type OrderLine } from "../../shared/carts.ts";
-import { mergeIngredients, missingAmounts, type MergedItem } from "../../shared/merge.ts";
+import { mergeIngredients, type MergedItem } from "../../shared/merge.ts";
 import {
   STEPS,
   answerStock,
@@ -12,7 +12,6 @@ import {
   orderLines,
   toggleRecipe,
   type OrderState,
-  type StockChoice,
 } from "../../shared/order.ts";
 import { STORE_NAMES, type Grocery, type Recipe } from "../../shared/types.ts";
 import { api } from "../api.ts";
@@ -40,11 +39,6 @@ function save(state: OrderState) {
 /** Deli products sold by the pound go up a quarter pound at a time. */
 function qtyStep(grocery: Grocery | undefined): number {
   return grocery?.product?.soldBy === "pound" ? 0.25 : 1;
-}
-
-function joinNames(names: string[]): string {
-  if (names.length <= 1) return names.join("");
-  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
 export function OrderPage() {
@@ -84,16 +78,6 @@ export function OrderPage() {
     window.scrollTo(0, 0);
   };
 
-  const setBuyingAmount = async (ingredientId: number, buyingAmount: number) => {
-    await api.patch(`/api/ingredients/${ingredientId}`, { buyingAmount });
-    setRecipes((rs) =>
-      rs.map((r) => ({
-        ...r,
-        ingredients: r.ingredients.map((i) => (i.kind === "ingredient" && i.id === ingredientId ? { ...i, buyingAmount } : i)),
-      })),
-    );
-  };
-
   if (!loaded) return <main className="wrap empty">Loading…</main>;
 
   return (
@@ -127,7 +111,7 @@ export function OrderPage() {
       <div className="stack step-body">
         {state.step === 0 && <PickRecipes state={state} setState={setState} />}
         {state.step === 1 && (
-          <StockCheck state={state} setState={setState} merged={merged} groceryById={groceryById} onSetBuying={setBuyingAmount} />
+          <StockCheck state={state} setState={setState} merged={merged} groceryById={groceryById} />
         )}
         {state.step === 2 && <Essentials state={state} setState={setState} />}
         {state.step === 3 && <AnythingElse state={state} setState={setState} />}
@@ -242,26 +226,13 @@ function PickRecipes({ state, setState }: StepProps) {
 }
 
 
-function describeChoice(item: MergedItem, answer: StockChoice | undefined, grocery: Grocery | undefined): string {
-  if (!answer) return "Not checked yet";
-  if (answer.choice === "have") return "Have it";
-  const unit = grocery?.product?.soldBy === "pound" ? "lb" : "";
-  const qty = `buy ${formatNumber(answer.quantity)}${unit ? " lb" : ""}`;
-  if (answer.choice === "all") return `Need all, ${qty}`;
-  return `Need ${formatBuyingAmount(answer.buyAmount, item.unit, item.groceryName)}, ${qty}`;
+function describeAnswer(quantity: number | undefined, grocery: Grocery | undefined): string {
+  if (quantity === undefined) return "Not checked yet";
+  if (quantity <= 0) return "Have it";
+  return `Buy ${formatNumber(quantity)}${grocery?.product?.soldBy === "pound" ? " lb" : ""}`;
 }
 
-function StockCheck({
-  state,
-  setState,
-  merged,
-  groceryById,
-  onSetBuying,
-}: StepProps & {
-  merged: MergedItem[];
-  groceryById: Map<number, Grocery>;
-  onSetBuying: (ingredientId: number, amount: number) => Promise<void>;
-}) {
+function StockCheck({ state, setState, merged, groceryById }: StepProps & { merged: MergedItem[]; groceryById: Map<number, Grocery> }) {
   if (state.recipeIds.length === 0) {
     return <p className="empty">No recipes picked, so there's nothing to check. Go on to the essentials.</p>;
   }
@@ -271,7 +242,7 @@ function StockCheck({
   const allAnswered = firstUnanswered(state, merged) === merged.length;
 
   if (state.stockReviewed && allAnswered) {
-    const buying = merged.filter((m) => state.stock[m.groceryId]?.choice !== "have").length;
+    const buying = merged.filter((m) => (state.stock[m.groceryId] ?? 0) > 0).length;
     return (
       <>
         <p className="muted">
@@ -283,13 +254,13 @@ function StockCheck({
             return (
               <button
                 key={item.groceryId}
-                className={`li${answer?.choice === "have" ? " have" : ""}`}
+                className={`li${answer === 0 ? " have" : ""}`}
                 onClick={() => setState((s) => ({ ...s, stockIndex: i, stockReviewed: false }))}
               >
                 <span className="grow">
                   <span className="name">{item.groceryName}</span>
                   <br />
-                  <span className="small muted">{describeChoice(item, answer, groceryById.get(item.groceryId))}</span>
+                  <span className="small muted">{describeAnswer(answer, groceryById.get(item.groceryId))}</span>
                 </span>
                 <StoreBadge product={groceryById.get(item.groceryId)?.product ?? null} />
               </button>
@@ -309,13 +280,12 @@ function StockCheck({
       count={merged.length}
       grocery={groceryById.get(item.groceryId)}
       answer={state.stock[item.groceryId]}
-      onSetBuying={onSetBuying}
       onBack={index > 0 ? () => setState((s) => ({ ...s, stockIndex: index - 1 })) : undefined}
       onSummary={allAnswered ? () => setState((s) => ({ ...s, stockReviewed: true })) : undefined}
-      onAnswer={(answer) =>
+      onAnswer={(quantity) =>
         setState((s) => {
-          const next = answerStock(s, item.groceryId, answer);
-          const after = merged.findIndex((m, i) => i > index && !next.stock[m.groceryId]);
+          const next = answerStock(s, item.groceryId, quantity);
+          const after = merged.findIndex((m, i) => i > index && next.stock[m.groceryId] === undefined);
           const unanswered = after !== -1 ? after : firstUnanswered(next, merged);
           return unanswered === merged.length
             ? { ...next, stockReviewed: true }
@@ -326,6 +296,11 @@ function StockCheck({
   );
 }
 
+/**
+ * One grocery in the stock check: the ingredient lines that ask for it and how
+ * many of its product to buy. The quantity starts at 1, and taking it down to 0
+ * means there's enough at home and moves to the next grocery.
+ */
 function StockCard({
   item,
   position,
@@ -335,26 +310,19 @@ function StockCard({
   onAnswer,
   onBack,
   onSummary,
-  onSetBuying,
 }: {
   item: MergedItem;
   position: number;
   count: number;
   grocery: Grocery | undefined;
-  answer: StockChoice | undefined;
-  onAnswer: (a: StockChoice) => void;
+  answer: number | undefined;
+  onAnswer: (quantity: number) => void;
   onBack?: () => void;
   onSummary?: () => void;
-  onSetBuying: (ingredientId: number, amount: number) => Promise<void>;
 }) {
-  const [phase, setPhase] = useState<"choose" | "some" | "qty">("choose");
-  const [pending, setPending] = useState<"all" | "some">("all");
-  const [buyAmount, setBuyAmount] = useState(answer?.choice === "some" ? answer.buyAmount : 1);
-  const [quantity, setQuantity] = useState(answer && answer.choice !== "have" ? answer.quantity : 1);
+  const [quantity, setQuantity] = useState(answer !== undefined && answer > 0 ? answer : 1);
   const product = grocery?.product ?? null;
   const byPound = product?.soldBy === "pound";
-  const missing = missingAmounts(item);
-  const unitWord = item.unit || item.groceryName.toLowerCase();
 
   return (
     <>
@@ -363,94 +331,37 @@ function StockCard({
           Item {position + 1} of {count}
         </span>
         <div className="item-name">{item.groceryName}</div>
-        {item.total !== null && (
-          <p>
-            <strong>{formatBuyingAmount(item.total, item.unit, item.groceryName)}</strong>, for {joinNames(item.recipeNames)}
-          </p>
-        )}
-        {item.total === null && <p>For {joinNames(item.recipeNames)}</p>}
-        {missing.length > 0 && (
-          <div className="stack tight" style={{ textAlign: "left" }}>
-            {missing.map((use) => (
-              <MissingAmount key={use.ingredientId} use={use} unitWord={unitWord} onSave={onSetBuying} />
-            ))}
+        <p className="muted">{product ? productLabel(product) : "No product linked. You'll add this in the store app by hand."}</p>
+        <ul className="uses">
+          {item.uses.map((use) => (
+            <li key={use.ingredientId}>
+              <strong>{use.cookingAmount || "Some"}</strong>
+              {use.preparation && ` ${use.preparation}`}, for {use.recipeName}
+            </li>
+          ))}
+        </ul>
+        <div className="stack" style={{ alignItems: "center", marginTop: 8 }}>
+          <div className="row" style={{ justifyContent: "center" }}>
+            <span>Buy</span>
+            <Stepper
+              large
+              value={quantity}
+              min={0}
+              step={byPound ? 0.25 : 1}
+              onChange={(n) => (n <= 0 ? onAnswer(0) : setQuantity(n))}
+              label="Quantity to buy"
+            />
+            {byPound && <span>lb</span>}
           </div>
-        )}
-
-        {phase === "choose" && (
-          <div className="stack" style={{ marginTop: 8 }}>
-            <button className="btn big ghost" onClick={() => onAnswer({ choice: "have" })}>
+          <div className="row nowrap" style={{ width: "100%" }}>
+            <button className="btn ghost" onClick={() => onAnswer(0)}>
               Have it
             </button>
-            <div className="two">
-              <button
-                className="btn"
-                onClick={() => {
-                  setPending("all");
-                  setPhase("qty");
-                }}
-              >
-                Need all of it
-              </button>
-              <button className="btn" onClick={() => setPhase("some")}>
-                Need some of it
-              </button>
-            </div>
+            <button className="btn grow" onClick={() => onAnswer(quantity)}>
+              Next
+            </button>
           </div>
-        )}
-
-        {phase === "some" && (
-          <div className="stack" style={{ alignItems: "center", marginTop: 8 }}>
-            <p>How much do you need to buy?</p>
-            <div className="row" style={{ justifyContent: "center" }}>
-              <Stepper large value={buyAmount} onChange={setBuyAmount} min={0} step={item.unit === "lb" ? 0.5 : 1} label="Amount to buy" />
-              <span>{item.unit || unitWord}</span>
-            </div>
-            <div className="row nowrap" style={{ width: "100%" }}>
-              <button className="btn ghost" onClick={() => setPhase("choose")}>
-                Back
-              </button>
-              <button
-                className="btn grow"
-                disabled={buyAmount <= 0}
-                onClick={() => {
-                  setPending("some");
-                  setPhase("qty");
-                }}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-
-        {phase === "qty" && (
-          <div className="stack" style={{ alignItems: "center", marginTop: 8 }}>
-            {product ? (
-              <p>
-                How many {byPound ? "pounds" : ""} of <strong>{productLabel(product)}</strong> to buy?
-              </p>
-            ) : (
-              <p>
-                No product is linked yet, so you'll add this in the store app by hand. How many to buy?
-              </p>
-            )}
-            <Stepper large value={quantity} onChange={setQuantity} min={byPound ? 0.25 : 1} step={byPound ? 0.25 : 1} label="Quantity" />
-            <div className="row nowrap" style={{ width: "100%" }}>
-              <button className="btn ghost" onClick={() => setPhase(pending === "some" ? "some" : "choose")}>
-                Back
-              </button>
-              <button
-                className="btn grow"
-                onClick={() =>
-                  onAnswer(pending === "all" ? { choice: "all", quantity } : { choice: "some", buyAmount, quantity })
-                }
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
       <div className="row between">
         <button className="btn plain" disabled={!onBack} onClick={onBack}>
@@ -462,57 +373,8 @@ function StockCard({
           </button>
         )}
       </div>
-      {answer && <p className="small muted">Answered before: {describeChoice(item, answer, grocery)}</p>}
+      {answer !== undefined && <p className="small muted">Answered before: {describeAnswer(answer, grocery)}</p>}
     </>
-  );
-}
-
-function MissingAmount({
-  use,
-  unitWord,
-  onSave,
-}: {
-  use: { ingredientId: number; recipeName: string; cookingAmount: string };
-  unitWord: string;
-  onSave: (ingredientId: number, amount: number) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState("");
-  const [saving, setSaving] = useState(false);
-  return (
-    <div className="note">
-      <div>
-        {use.recipeName} uses <strong>{use.cookingAmount || "some"}</strong>. It has no buying amount yet.
-      </div>
-      {!editing ? (
-        <button className="btn plain small" onClick={() => setEditing(true)}>
-          Set the buying amount
-        </button>
-      ) : (
-        <form
-          className="row nowrap"
-          style={{ marginTop: 6 }}
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const n = Number(value);
-            if (!(n > 0)) return;
-            setSaving(true);
-            try {
-              await onSave(use.ingredientId, n);
-            } catch (err) {
-              toast((err as Error).message);
-              setSaving(false);
-            }
-          }}
-        >
-          <input className="compact" type="number" inputMode="decimal" min="0" step="any" value={value} onChange={(e) => setValue(e.target.value)} aria-label={`Buying amount in ${unitWord}`} autoFocus />
-          <span>{unitWord}</span>
-          <button className="btn small" disabled={saving}>
-            Save
-          </button>
-        </form>
-      )}
-    </div>
   );
 }
 

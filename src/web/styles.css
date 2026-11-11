@@ -123,6 +123,7 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
 .steps button { height: 6px; border-radius: 3px; background: var(--line); border: 0; padding: 0; }
 .steps button.done { background: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px 20px; text-align: center; display: flex; flex-direction: column; gap: 10px; min-height: 220px; justify-content: center; }
+.card .uses { list-style: disc; text-align: left; margin: 4px auto; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .card .item-name { font-family: var(--display); font-size: 1.9rem; font-weight: 800; overflow-wrap: anywhere; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .two .btn { padding: 18px 8px; font-size: 1.1rem; }
@@ -210,9 +211,9 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size:
   /* Recipes */
   .recipe-cols { display: grid; grid-template-columns: minmax(320px, 5fr) 7fr; gap: 40px; align-items: start; }
   .steps-list { gap: 14px; font-size: 1.05rem; line-height: 1.55; max-width: 68ch; }
-  .ing-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px 10px; align-items: end; }
+  .ing-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px 10px; align-items: end; }
   .ing-row .full { grid-column: auto; }
-  .ing-row .heading-field { grid-column: 1 / 5; }
+  .ing-row .heading-field { grid-column: 1 / 4; }
   .ing-row > .row { flex-wrap: nowrap; }
 
   /* Catalog */

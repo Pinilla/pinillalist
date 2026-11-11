@@ -71,11 +71,11 @@ describe("importAnyList", () => {
     expect(chili!.cookTime).toBeNull();
     expect(chili!.steps).toEqual(["Brown the beef."]);
     expect(chili!.collectionIds).toHaveLength(1);
-    expect(chili!.ingredients.map((i) => (i.kind === "heading" ? `# ${i.text}` : `${i.groceryName}|${i.cookingAmount}|${i.preparation}|${i.buyingAmount}`))).toEqual([
+    expect(chili!.ingredients.map((i) => (i.kind === "heading" ? `# ${i.text}` : `${i.groceryName}|${i.cookingAmount}|${i.preparation}`))).toEqual([
       "# Base",
-      "Ground Beef|2 lb||2",
-      "Onions|2|diced|2",
-      "Chili powder|2 tbsp||null",
+      "Ground Beef|2 lb|",
+      "Onions|2|diced",
+      "Chili powder|2 tbsp|",
     ]);
   });
 

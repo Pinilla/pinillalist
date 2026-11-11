@@ -44,7 +44,6 @@ export interface ImportReport {
   collections: number;
   groceries: number;
   ingredients: number;
-  withBuyingAmount: number;
   photos: number;
   missingPhotos: string[];
   essentials: number;
@@ -75,7 +74,7 @@ export function importAnyList(
 
   const source = data.recipeDataResponse;
   const report: ImportReport = {
-    recipes: 0, collections: 0, groceries: 0, ingredients: 0, withBuyingAmount: 0,
+    recipes: 0, collections: 0, groceries: 0, ingredients: 0,
     photos: 0, missingPhotos: [], essentials: 0, suggestions: 0, skippedLists: [],
   };
 
@@ -167,9 +166,6 @@ export function importAnyList(
         const key = groceryKey(p.groceryName);
         const { grocery, created } = findOrCreateGrocery(tx, p.groceryName, unitFor(key));
         if (created) report.groceries++;
-        const counted = countedAmount(p.cookingAmount);
-        const buyingAmount = counted && counted.unit === grocery.unit ? counted.amount : null;
-        if (buyingAmount !== null) report.withBuyingAmount++;
         report.ingredients++;
         tx.insert(ingredients)
           .values({
@@ -179,7 +175,6 @@ export function importAnyList(
             groceryId: grocery.id,
             cookingAmount: p.cookingAmount,
             preparation: p.preparation,
-            buyingAmount,
             raw: ing.rawIngredient ?? ing.name ?? "",
           })
           .run();

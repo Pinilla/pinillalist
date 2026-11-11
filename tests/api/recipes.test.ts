@@ -12,8 +12,8 @@ describe("recipes", () => {
         "Tacos",
         [
           { kind: "heading", text: "Filling" },
-          { kind: "ingredient", groceryName: "Ground beef", cookingAmount: "1 lb", preparation: "", buyingAmount: 1 },
-          { kind: "ingredient", groceryName: "Onion", cookingAmount: "1", preparation: "diced", buyingAmount: 1 },
+          { kind: "ingredient", groceryName: "Ground beef", cookingAmount: "1 lb", preparation: "" },
+          { kind: "ingredient", groceryName: "Onion", cookingAmount: "1", preparation: "diced" },
         ],
         { collectionIds: [col.id], steps: ["Brown the beef.", "  ", "Add onion."], prepTime: 600 },
       ),
@@ -22,7 +22,7 @@ describe("recipes", () => {
     expect(res.body.steps).toEqual(["Brown the beef.", "Add onion."]);
     expect(res.body.collectionIds).toEqual([col.id]);
     expect(res.body.ingredients.map((i: { kind: string }) => i.kind)).toEqual(["heading", "ingredient", "ingredient"]);
-    expect(res.body.ingredients[2]).toMatchObject({ groceryName: "Onion", preparation: "diced", buyingAmount: 1 });
+    expect(res.body.ingredients[2]).toMatchObject({ groceryName: "Onion", preparation: "diced" });
     expect((await call("GET", "/api/groceries")).body).toHaveLength(2);
   });
 
@@ -32,14 +32,6 @@ describe("recipes", () => {
     const { body: b } = await call("POST", "/api/recipes", recipeBody("B", []));
     const { body } = await call("GET", `/api/recipes?ids=${b.id},${a.id}`);
     expect(body.map((r: { name: string }) => r.name)).toEqual(["B", "A"]);
-  });
-
-  it("sets an ingredient's buying amount from the stock check", async () => {
-    const { call } = await setup();
-    const { body: r } = await call("POST", "/api/recipes", recipeBody("Rub", [{ kind: "ingredient", groceryName: "Cumin", cookingAmount: "1 tsp" }]));
-    const ingId = r.ingredients[0].id;
-    expect((await call("PATCH", `/api/ingredients/${ingId}`, { buyingAmount: 1 })).status).toBe(204);
-    expect((await call("GET", `/api/recipes/${r.id}`)).body.ingredients[0].buyingAmount).toBe(1);
   });
 
   it("replaces a recipe's ingredients on save", async () => {
@@ -52,12 +44,6 @@ describe("recipes", () => {
   it("rejects a recipe without a name", async () => {
     const { call } = await setup();
     expect((await call("POST", "/api/recipes", recipeBody("  ", []))).status).toBe(409);
-  });
-
-  it("rejects a negative buying amount", async () => {
-    const { call } = await setup();
-    const res = await call("POST", "/api/recipes", recipeBody("X", [{ kind: "ingredient", groceryName: "Leek", buyingAmount: -1 }]));
-    expect(res.status).toBe(400);
   });
 
   it("deletes a recipe", async () => {

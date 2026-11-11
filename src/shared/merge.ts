@@ -1,29 +1,25 @@
 import type { Grocery, Recipe } from "./types.ts";
 
-/** One recipe's need for a grocery, kept so the stock check can show where an amount came from. */
+/** One recipe's ingredient line for a grocery, shown on the stock check card. */
 export interface IngredientUse {
   recipeId: number;
   recipeName: string;
   ingredientId: number;
   cookingAmount: string;
-  buyingAmount: number | null;
+  preparation: string;
 }
 
-/** One grocery the chosen recipes need, with their buying amounts added up. */
+/** One grocery the chosen recipes need, with every ingredient line that asks for it. */
 export interface MergedItem {
   groceryId: number;
   groceryName: string;
-  unit: string;
-  /** Sum of the known buying amounts. Null when no ingredient has one yet. */
-  total: number | null;
   uses: IngredientUse[];
-  /** Recipe names in the order they were chosen, each once. */
-  recipeNames: string[];
 }
 
 /**
- * Merges the chosen recipes' ingredients into one item per grocery. Preparations
- * are ignored, so "1 onion, diced" and "1 onion" both add to Onion.
+ * Merges the chosen recipes' ingredients into one item per grocery, so "1 onion,
+ * diced" and "1 onion" are both lines under Onion. The amounts are not added up.
+ * The person reads the lines and decides how many of the product to buy.
  */
 export function mergeIngredients(recipes: Recipe[], groceries: Map<number, Grocery>): MergedItem[] {
   const items = new Map<number, MergedItem>();
@@ -32,15 +28,7 @@ export function mergeIngredients(recipes: Recipe[], groceries: Map<number, Groce
       if (row.kind !== "ingredient") continue;
       let item = items.get(row.groceryId);
       if (!item) {
-        const grocery = groceries.get(row.groceryId);
-        item = {
-          groceryId: row.groceryId,
-          groceryName: grocery?.name ?? row.groceryName,
-          unit: grocery?.unit ?? "",
-          total: null,
-          uses: [],
-          recipeNames: [],
-        };
+        item = { groceryId: row.groceryId, groceryName: groceries.get(row.groceryId)?.name ?? row.groceryName, uses: [] };
         items.set(row.groceryId, item);
       }
       item.uses.push({
@@ -48,16 +36,9 @@ export function mergeIngredients(recipes: Recipe[], groceries: Map<number, Groce
         recipeName: recipe.name,
         ingredientId: row.id,
         cookingAmount: row.cookingAmount,
-        buyingAmount: row.buyingAmount,
+        preparation: row.preparation,
       });
-      if (row.buyingAmount !== null) item.total = (item.total ?? 0) + row.buyingAmount;
-      if (!item.recipeNames.includes(recipe.name)) item.recipeNames.push(recipe.name);
     }
   }
   return [...items.values()];
-}
-
-/** Ingredients of a merged item that still need a buying amount. */
-export function missingAmounts(item: MergedItem): IngredientUse[] {
-  return item.uses.filter((u) => u.buyingAmount === null);
 }

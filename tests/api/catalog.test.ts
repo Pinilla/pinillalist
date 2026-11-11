@@ -57,7 +57,7 @@ describe("catalog", () => {
     const { body: recipe } = await call(
       "POST",
       "/api/recipes",
-      recipeBody("Chili", [{ kind: "ingredient", groceryName: "Yellow onion", cookingAmount: "1", buyingAmount: 1 }]),
+      recipeBody("Chili", [{ kind: "ingredient", groceryName: "Yellow onion", cookingAmount: "1" }]),
     );
     const yellowId = recipe.ingredients[0].groceryId;
     await call("PUT", `/api/groceries/${yellowId}/product`, { link: "https://www.walmart.com/ip/51259212" });
