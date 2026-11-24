@@ -65,66 +65,63 @@ function isUnitWord(word: string): boolean {
 }
 
 export function parseIngredient(input: AnyListIngredient): ParsedIngredient {
-  const preps: string[] = [];
   const quantity = unwrap(input.quantity ?? "");
-  let cookingAmount = quantity;
-  let name = squash(input.name).replace(/^[∙•·.\s]+/, "");
+  const amount = splitAmount(squash(input.name).replace(/^[∙•·.\s]+/, ""), quantity);
+  const sized = takeSizeWords(amount.name.replace(/^(of|\/)\s+/i, ""), amount.cookingAmount);
+  const leading = takeLeadingPreparation(sized.name);
+  const parens = takeParentheses(leading.name);
+  const comma = takeAfterComma(parens.name);
+  const note = unwrap(input.note ?? "");
+  const preps = [leading.preparation, comma.preparation, ...parens.notes, note].filter(Boolean);
+  return {
+    groceryName: capitalize(squash(comma.name.replace(/[()]/g, " "))),
+    cookingAmount: sized.cookingAmount,
+    preparation: preps.join(", "),
+  };
+}
 
+function splitAmount(name: string, quantity: string): { name: string; cookingAmount: string } {
   const andMatch = /^and\s+(?=[\d½⅓⅔¼¾⅛])/i.exec(name);
   if (andMatch) {
     const peeled = peelAmount(name.slice(andMatch[0].length));
-    if (peeled.amount) {
-      cookingAmount = squash(`${quantity} and ${peeled.amount}`);
-      name = peeled.rest;
-    }
-  } else {
-    const peeled = peelAmount(name);
-    if (peeled.amount && peeled.rest) {
-      const amount = peeled.amount.replace(/(\d)\s+(g|kg|ml)\b/g, "$1$2");
-      cookingAmount = quantity ? `${amount} (${quantity})` : amount;
-      name = peeled.rest;
-    }
+    return peeled.amount ? { name: peeled.rest, cookingAmount: squash(`${quantity} and ${peeled.amount}`) } : { name, cookingAmount: quantity };
   }
+  const peeled = peelAmount(name);
+  if (!peeled.amount || !peeled.rest) return { name, cookingAmount: quantity };
+  const amount = peeled.amount.replace(/(\d)\s+(g|kg|ml)\b/g, "$1$2");
+  return { name: peeled.rest, cookingAmount: quantity ? `${amount} (${quantity})` : amount };
+}
 
-  name = name.replace(/^(of|\/)\s+/i, "");
-
-  const sized = name.split(" ");
-  while (sized.length > 1 && SIZE_WORDS.has(sized[0]!.toLowerCase())) {
-    const size = sized.shift()!.toLowerCase();
-    cookingAmount = cookingAmount ? `${cookingAmount} ${size}` : size;
+function takeSizeWords(name: string, cookingAmount: string): { name: string; cookingAmount: string } {
+  const words = name.split(" ");
+  let amount = cookingAmount;
+  while (words.length > 1 && SIZE_WORDS.has(words[0]!.toLowerCase())) {
+    const size = words.shift()!.toLowerCase();
+    amount = amount ? `${amount} ${size}` : size;
   }
-  name = sized.join(" ");
+  return { name: words.join(" "), cookingAmount: amount };
+}
 
+function takeLeadingPreparation(name: string): { name: string; preparation: string } {
   const words = name.split(" ");
   const leading: string[] = [];
   while (words.length > 1 && PREP_WORDS.has(words[0]!.toLowerCase())) leading.push(words.shift()!.toLowerCase());
-  if (leading.length) preps.push(leading.join(" "));
-  name = words.join(" ");
+  return { name: words.join(" "), preparation: leading.join(" ") };
+}
 
-  const parens: string[] = [];
-  name = name.replace(/\(([^)]*)\)?/g, (_, inner: string) => {
-    parens.push(unwrap(inner));
+function takeParentheses(name: string): { name: string; notes: string[] } {
+  const notes: string[] = [];
+  const rest = name.replace(/\(([^)]*)\)?/g, (_, inner: string) => {
+    notes.push(unwrap(inner));
     return " ";
   });
+  return { name: rest, notes };
+}
 
+function takeAfterComma(name: string): { name: string; preparation: string } {
   const comma = name.indexOf(",");
-  if (comma !== -1) {
-    const after = unwrap(name.slice(comma + 1));
-    if (after) preps.push(after);
-    name = name.slice(0, comma);
-  }
-  preps.push(...parens.filter(Boolean));
-
-  name = name.replace(/[()]/g, " ");
-
-  const note = unwrap(input.note ?? "");
-  if (note) preps.push(note);
-
-  return {
-    groceryName: capitalize(squash(name)),
-    cookingAmount,
-    preparation: preps.join(", "),
-  };
+  if (comma === -1) return { name, preparation: "" };
+  return { name: name.slice(0, comma), preparation: unwrap(name.slice(comma + 1)) };
 }
 
 const COUNT_UNITS: Record<string, string> = {
