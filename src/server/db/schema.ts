@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
-/** The household's catalog of groceries. `nameKey` is the lowercased name, kept unique. */
 export const groceries = sqliteTable(
   "groceries",
   {
@@ -9,13 +8,11 @@ export const groceries = sqliteTable(
     name: text().notNull(),
     nameKey: text("name_key").notNull(),
     unit: text().notNull().default(""),
-    /** A key from LOCATIONS in src/shared/locations.ts, or null. */
     location: text(),
   },
   (t) => [uniqueIndex("groceries_name_key").on(t.nameKey)],
 );
 
-/** The one store product a grocery is linked to. */
 export const products = sqliteTable("products", {
   groceryId: integer("grocery_id")
     .primaryKey()
@@ -32,7 +29,6 @@ export const recipes = sqliteTable("recipes", {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull(),
   servings: text().notNull().default(""),
-  /** Seconds, as AnyList stores them. */
   prepTime: integer("prep_time"),
   cookTime: integer("cook_time"),
   steps: text({ mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
@@ -63,7 +59,6 @@ export const recipeCollections = sqliteTable(
   (t) => [primaryKey({ columns: [t.recipeId, t.collectionId] })],
 );
 
-/** A recipe's ingredient list, in order. A row is either a section heading or an ingredient. */
 export const ingredients = sqliteTable(
   "ingredients",
   {
@@ -77,14 +72,8 @@ export const ingredients = sqliteTable(
     groceryId: integer("grocery_id").references(() => groceries.id),
     cookingAmount: text("cooking_amount").notNull().default(""),
     preparation: text().notNull().default(""),
-    /** Optional ingredients reach the weekly order only when someone picks them along with the recipe. */
     optional: integer({ mode: "boolean" }).notNull().default(false),
-    /**
-     * Set when this ingredient is something the household makes from another recipe,
-     * such as a sauce. The grocery is then what to buy instead of making it.
-     */
     subRecipeId: integer("sub_recipe_id").references((): AnySQLiteColumn => recipes.id, { onDelete: "set null" }),
-    /** The original AnyList text, kept for reference after import. */
     raw: text().notNull().default(""),
   },
   (t) => [index("ingredients_recipe").on(t.recipeId), index("ingredients_grocery").on(t.groceryId)],
@@ -115,7 +104,6 @@ export const listItems = sqliteTable(
   (t) => [index("list_items_list").on(t.listId)],
 );
 
-/** Pairs of groceries that may be the same thing, waiting for the owner to merge them or keep them apart. */
 export const mergeSuggestions = sqliteTable("merge_suggestions", {
   id: integer().primaryKey({ autoIncrement: true }),
   groceryA: integer("grocery_a")
@@ -127,7 +115,6 @@ export const mergeSuggestions = sqliteTable("merge_suggestions", {
   status: text({ enum: ["pending", "kept"] }).notNull().default("pending"),
 });
 
-/** Key-value settings: the household password hash and the cookie signing secret. */
 export const settings = sqliteTable("settings", {
   key: text().primaryKey(),
   value: text().notNull(),

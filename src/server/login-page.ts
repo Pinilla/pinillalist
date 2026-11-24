@@ -1,7 +1,18 @@
 import { html } from "hono/html";
 
-/** The login page. It's plain HTML so it works before the app's scripts are allowed to load. */
-export function loginPage(opts: { error?: string; needsSetup?: boolean }) {
+export function loginPage(error?: string) {
+  return layout(html`<p>Enter the household password.</p>
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+  <button type="submit">Log in</button>
+  ${error ? html`<p class="error" role="alert">${error}</p>` : ""}`);
+}
+
+export function setupPage() {
+  return layout(html`<p>No household password is set yet. On server1, run <code>npm run set-password</code> in the app folder.</p>`);
+}
+
+function layout(body: ReturnType<typeof html>) {
   return html`<!doctype html>
 <html lang="en">
 <head>
@@ -29,13 +40,7 @@ export function loginPage(opts: { error?: string; needsSetup?: boolean }) {
 <body>
 <form method="post" action="/login">
   <h1>pinillalist</h1>
-  ${opts.needsSetup
-    ? html`<p>No household password is set yet. On server1, run <code>npm run set-password</code> in the app folder.</p>`
-    : html`<p>Enter the household password.</p>
-  <label for="password">Password</label>
-  <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
-  <button type="submit">Log in</button>`}
-  ${opts.error ? html`<p class="error" role="alert">${opts.error}</p>` : ""}
+  ${body}
 </form>
 </body>
 </html>`;

@@ -27,8 +27,6 @@ function Tab({ href, label, icon }: { href: string; label: string; icon: string 
   );
 }
 
-// On a desktop the index stays on screen and the chosen item opens beside it, so one
-// route covers both and the index keeps its scroll position and filters.
 function ListsRoute({ id }: { id: number | undefined }) {
   const desktop = useDesktop();
   if (desktop) return <ListsPage selectedId={id} />;

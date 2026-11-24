@@ -13,7 +13,6 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-/** Starts the app on a fresh database file and returns a client that's already logged in. */
 export async function setup(opts: { password?: boolean } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "pinillalist-test-"));
   dirs.push(dir);

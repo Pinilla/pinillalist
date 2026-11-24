@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Collection, Grocery, GroceryList, RecipeSummary } from "../shared/types.ts";
+import type { Collection, Grocery, GroceryList, Recipe, RecipeSummary } from "../shared/types.ts";
 import { api } from "./api.ts";
 
 interface Data {
@@ -17,7 +17,6 @@ interface Data {
 
 const DataContext = createContext<Data | null>(null);
 
-/** Loads the household's shared data once and lets screens refresh the parts they change. */
 export function DataProvider({ children }: { children: ReactNode }) {
   const [groceries, setGroceries] = useState<Grocery[]>([]);
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
@@ -44,15 +43,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    void reload();
-    // Pick up the other phone's changes when this one comes back to the app.
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void reload();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [reload]);
+  useReloadOnReturn(reload);
 
   const value = useMemo<Data>(
     () => ({
@@ -64,12 +55,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loaded,
       error,
       reload,
-      setGrocery: (g) =>
-        setGroceries((all) => {
-          const next = all.some((x) => x.id === g.id) ? all.map((x) => (x.id === g.id ? g : x)) : [...all, g];
-          return next.sort((a, b) => a.name.localeCompare(b.name));
-        }),
-      setList: (l) => setLists((all) => (all.some((x) => x.id === l.id) ? all.map((x) => (x.id === l.id ? l : x)) : [...all, l])),
+      setGrocery: (g) => setGroceries((all) => replaceById(all, g).sort((a, b) => a.name.localeCompare(b.name))),
+      setList: (l) => setLists((all) => replaceById(all, l)),
     }),
     [groceries, recipes, collections, lists, loaded, error, reload],
   );
@@ -77,8 +64,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 
+function useReloadOnReturn(reload: () => Promise<void>) {
+  useEffect(() => {
+    void reload();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reload]);
+}
+
+function replaceById<T extends { id: number }>(all: T[], item: T): T[] {
+  return all.some((x) => x.id === item.id) ? all.map((x) => (x.id === item.id ? item : x)) : [...all, item];
+}
+
 export function useData(): Data {
   const data = useContext(DataContext);
   if (!data) throw new Error("useData needs a DataProvider");
   return data;
+}
+
+export function useRecipe(id: number | null) {
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (id === null) return;
+    let live = true;
+    api
+      .get<Recipe>(`/api/recipes/${id}`)
+      .then((r) => live && setRecipe(r))
+      .catch((err: Error) => live && setError(err.message));
+    return () => {
+      live = false;
+    };
+  }, [id]);
+  return { recipe, error };
 }

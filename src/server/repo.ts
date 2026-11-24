@@ -30,8 +30,6 @@ export class Conflict extends Error {}
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 type Conn = Db | Tx;
 
-// Settings
-
 export function getSetting(db: Conn, key: string): string | undefined {
   return db.select().from(settings).where(eq(settings.key, key)).get()?.value;
 }
@@ -39,8 +37,6 @@ export function getSetting(db: Conn, key: string): string | undefined {
 export function setSetting(db: Conn, key: string, value: string) {
   db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } }).run();
 }
-
-// Groceries
 
 function toGrocery(row: { g: typeof groceries.$inferSelect; p: typeof products.$inferSelect | null }): Grocery {
   const { g, p } = row;
@@ -71,7 +67,6 @@ export function getGrocery(db: Conn, id: number): Grocery {
   return toGrocery(row);
 }
 
-/** Finds the grocery with this name, ignoring case and plurals, or adds it to the catalog. */
 export function findOrCreateGrocery(db: Conn, name: string, unit = ""): { grocery: Grocery; created: boolean } {
   const clean = name.replace(/\s+/g, " ").trim();
   if (!clean) throw new Conflict("A grocery needs a name.");
@@ -127,10 +122,6 @@ export function deleteGrocery(db: Conn, id: number) {
   db.delete(groceries).where(eq(groceries.id, id)).run();
 }
 
-/**
- * Merges one grocery into another: its ingredients and list items move over,
- * its product moves over if the target has none, and it leaves the catalog.
- */
 export function mergeGrocery(db: Db, fromId: number, intoId: number): Grocery {
   if (fromId === intoId) throw new Conflict("Pick a different grocery to merge into.");
   return db.transaction((tx) => {
@@ -138,7 +129,6 @@ export function mergeGrocery(db: Db, fromId: number, intoId: number): Grocery {
     const into = getGrocery(tx, intoId);
     tx.update(ingredients).set({ groceryId: intoId }).where(eq(ingredients.groceryId, fromId)).run();
 
-    // A list keeps one item per grocery, so items on the same list are combined.
     const moving = tx.select().from(listItems).where(eq(listItems.groceryId, fromId)).all();
     for (const item of moving) {
       const twin = tx
@@ -197,7 +187,6 @@ export function addMergeSuggestion(db: Conn, a: number, b: number) {
   if (!existing) db.insert(mergeSuggestions).values({ groceryA: a, groceryB: b }).run();
 }
 
-/** How many recipes and lists use each grocery, for the catalog screen. */
 export function groceryUsage(db: Conn): Record<number, { recipes: number; lists: number }> {
   const usage: Record<number, { recipes: number; lists: number }> = {};
   const seen = new Set<string>();
@@ -211,8 +200,6 @@ export function groceryUsage(db: Conn): Record<number, { recipes: number; lists:
   }
   return usage;
 }
-
-// Collections and recipes
 
 export function listCollections(db: Conn): Collection[] {
   return db
@@ -259,62 +246,67 @@ export function getRecipes(db: Conn, ids: number[]): Recipe[] {
   if (!ids.length) return [];
   const rows = db.select().from(recipes).where(inArray(recipes.id, ids)).all();
   const cols = collectionIdsByRecipe(db, ids);
-  const ings = db
-    .select({ i: ingredients, name: groceries.name })
-    .from(ingredients)
-    .leftJoin(groceries, eq(groceries.id, ingredients.groceryId))
-    .where(inArray(ingredients.recipeId, ids))
-    .orderBy(asc(ingredients.recipeId), asc(ingredients.position))
-    .all();
-  const subIds = [...new Set(ings.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null))];
-  const subNames = new Map(
-    subIds.length
-      ? db.select({ id: recipes.id, name: recipes.name }).from(recipes).where(inArray(recipes.id, subIds)).all().map((r) => [r.id, r.name])
-      : [],
-  );
-  const byRecipe = new Map<number, IngredientRow[]>();
-  for (const { i, name } of ings) {
-    const row: IngredientRow =
-      i.kind === "heading" || i.groceryId === null
-        ? { kind: "heading", id: i.id, text: i.heading }
-        : {
-            kind: "ingredient",
-            id: i.id,
-            groceryId: i.groceryId,
-            groceryName: name ?? "",
-            cookingAmount: i.cookingAmount,
-            preparation: i.preparation,
-            optional: i.optional,
-            subRecipe: i.subRecipeId !== null ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" } : null,
-          };
-    byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), row]);
-  }
-  const byId = new Map(
-    rows.map((r) => [
-      r.id,
-      {
-        id: r.id,
-        name: r.name,
-        photo: r.photo,
-        collectionIds: cols.get(r.id) ?? [],
-        servings: r.servings,
-        prepTime: r.prepTime,
-        cookTime: r.cookTime,
-        steps: r.steps,
-        note: r.note,
-        sourceName: r.sourceName,
-        sourceUrl: r.sourceUrl,
-        rating: r.rating,
-        ingredients: byRecipe.get(r.id) ?? [],
-        hasExtras: (byRecipe.get(r.id) ?? []).some((i) => i.kind === "ingredient" && (i.optional || i.subRecipe !== null)),
-      } satisfies Recipe,
-    ]),
-  );
-  // Keep the order the caller asked for.
+  const ingredientsOf = ingredientRowsByRecipe(db, ids);
+  const byId = new Map(rows.map((r) => [r.id, toRecipe(r, cols.get(r.id) ?? [], ingredientsOf.get(r.id) ?? [])]));
   return ids.flatMap((id) => {
     const r = byId.get(id);
     return r ? [r] : [];
   });
+}
+
+type IngredientRecord = typeof ingredients.$inferSelect;
+
+function ingredientRowsByRecipe(db: Conn, recipeIds: number[]): Map<number, IngredientRow[]> {
+  const found = db
+    .select({ i: ingredients, name: groceries.name })
+    .from(ingredients)
+    .leftJoin(groceries, eq(groceries.id, ingredients.groceryId))
+    .where(inArray(ingredients.recipeId, recipeIds))
+    .orderBy(asc(ingredients.recipeId), asc(ingredients.position))
+    .all();
+  const subNames = recipeNames(db, found.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null));
+  const byRecipe = new Map<number, IngredientRow[]>();
+  for (const { i, name } of found) byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), toIngredientRow(i, name ?? "", subNames)]);
+  return byRecipe;
+}
+
+function recipeNames(db: Conn, ids: number[]): Map<number, string> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Map();
+  return new Map(db.select({ id: recipes.id, name: recipes.name }).from(recipes).where(inArray(recipes.id, unique)).all().map((r) => [r.id, r.name]));
+}
+
+function toIngredientRow(i: IngredientRecord, groceryName: string, subNames: Map<number, string>): IngredientRow {
+  if (i.kind === "heading" || i.groceryId === null) return { kind: "heading", id: i.id, text: i.heading };
+  return {
+    kind: "ingredient",
+    id: i.id,
+    groceryId: i.groceryId,
+    groceryName,
+    cookingAmount: i.cookingAmount,
+    preparation: i.preparation,
+    optional: i.optional,
+    subRecipe: i.subRecipeId !== null ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" } : null,
+  };
+}
+
+function toRecipe(r: typeof recipes.$inferSelect, collectionIds: number[], rows: IngredientRow[]): Recipe {
+  return {
+    id: r.id,
+    name: r.name,
+    photo: r.photo,
+    collectionIds,
+    servings: r.servings,
+    prepTime: r.prepTime,
+    cookTime: r.cookTime,
+    steps: r.steps,
+    note: r.note,
+    sourceName: r.sourceName,
+    sourceUrl: r.sourceUrl,
+    rating: r.rating,
+    ingredients: rows,
+    hasExtras: rows.some((i) => i.kind === "ingredient" && (i.optional || i.subRecipe !== null)),
+  };
 }
 
 export function getRecipe(db: Conn, id: number): Recipe {
@@ -331,7 +323,6 @@ export type IngredientInput =
       cookingAmount: string;
       preparation: string;
       optional?: boolean;
-      /** Another recipe this ingredient is made from. */
       subRecipeId?: number | null;
     };
 
@@ -431,8 +422,6 @@ export function deleteRecipe(db: Conn, id: number): string | null {
   return recipe.photo;
 }
 
-// Lists
-
 export function listLists(db: Conn): GroceryList[] {
   const all = db.select().from(lists).orderBy(asc(lists.id)).all();
   const items = db
@@ -441,7 +430,6 @@ export function listLists(db: Conn): GroceryList[] {
     .innerJoin(groceries, eq(groceries.id, listItems.groceryId))
     .orderBy(asc(listItems.position), asc(listItems.id))
     .all();
-  // Essentials first, then the default list, then the rest.
   all.sort((a, b) => Number(b.kind === "essentials") - Number(a.kind === "essentials") || Number(b.isDefault) - Number(a.isDefault) || a.id - b.id);
   return all.map((l) => ({
     id: l.id,
@@ -501,7 +489,6 @@ export function deleteList(db: Conn, id: number) {
   }
 }
 
-/** Adds a grocery to a list. If the list already has it, the amounts add up instead. */
 export function addListItem(
   db: Conn,
   listId: number,

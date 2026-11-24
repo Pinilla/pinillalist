@@ -9,19 +9,18 @@ export function Stepper({
   onChange,
   min = 0,
   step = 1,
-  large = false,
+  className = "",
   label,
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
   step?: number;
-  large?: boolean;
+  className?: string;
   label: string;
 }) {
-  const round = (n: number) => Math.round(n * 100) / 100;
   return (
-    <span className={`stepper${large ? " large" : ""}`} role="group" aria-label={label}>
+    <span className={`stepper ${className}`.trim()} role="group" aria-label={label}>
       <button type="button" aria-label="Less" disabled={value - step < min} onClick={() => onChange(round(Math.max(min, value - step)))}>
         −
       </button>
@@ -33,10 +32,10 @@ export function Stepper({
   );
 }
 
-/**
- * The collection chips above a recipe grid. Each chip turns on or off on its
- * own, and the grid shows recipes in any chip that's on. All turns them all off.
- */
+function round(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 export function CollectionChips({
   collections,
   chosen,
@@ -90,7 +89,6 @@ export function Thumb({ photo, name, className = "thumb" }: { photo: string | nu
 
 let showToast: (text: string) => void = () => {};
 
-/** Shows a short message above the tab bar. */
 export function toast(text: string) {
   showToast(text);
 }
@@ -115,7 +113,6 @@ export function ToastHost() {
 
 const DESKTOP = "(min-width: 900px)";
 
-/** True when the window is wide enough for the sidebar layout. Matches the breakpoint in styles.css. */
 export function useDesktop(): boolean {
   return useSyncExternalStore(
     (notify) => {
@@ -127,36 +124,31 @@ export function useDesktop(): boolean {
   );
 }
 
-/**
- * A screen with a title. `embedded` renders it as a panel inside another screen, which the
- * desktop layout uses to show a grocery or a list next to its index.
- */
+export function Panel({ title, actions, children }: { title: ReactNode; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="panel stack">
+      <div className="row between nowrap">
+        <h2 className="grow">{title}</h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function Page({
   title,
   back,
   actions,
   children,
   width,
-  embedded = false,
 }: {
   title: ReactNode;
   back?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   width?: "medium";
-  embedded?: boolean;
 }) {
-  if (embedded) {
-    return (
-      <section className="panel stack">
-        <div className="row between nowrap">
-          <h2 className="grow">{title}</h2>
-          {actions}
-        </div>
-        {children}
-      </section>
-    );
-  }
   return (
     <main className={`wrap stack${width ? ` ${width}` : ""}`}>
       {back}
@@ -173,4 +165,19 @@ export function minutes(seconds: number | null): string {
   if (!seconds) return "";
   const m = Math.round(seconds / 60);
   return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ""}`.trim() : `${m} min`;
+}
+
+export function useBusy() {
+  const [busy, setBusy] = useState(false);
+  const run = async (work: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await work();
+    } catch (err) {
+      toast((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, run };
 }

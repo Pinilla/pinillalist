@@ -2,25 +2,15 @@ import { locationRank, type LocationKey } from "./locations.ts";
 import type { IngredientUse, MergedItem } from "./merge.ts";
 import type { Grocery, ListItem } from "./types.ts";
 
-/** One card in the stock check: a grocery to look for at home, from the picked recipes, the Essentials list, or both. */
 export interface CheckItem {
   groceryId: number;
   groceryName: string;
   location: LocationKey | null;
-  /** The picked recipes' ingredient lines for this grocery. Empty for an Essential no recipe needs. */
   uses: IngredientUse[];
-  /** Set when the grocery is on the Essentials list, with the list item's note. */
   essential: { details: string } | null;
-  /** The quantity the card starts at: 1 when a recipe needs it, 0 for an Essential that's only checked for being low. */
   start: number;
 }
 
-/**
- * Builds the stock check as one walk through the house. Recipe groceries and
- * Essentials are mixed together and sorted by location in walk order, with
- * groceries that have no location last. Inside a location, recipe groceries
- * keep the order the recipes were picked in, then come the Essentials in list order.
- */
 export function buildStockCheck(merged: MergedItem[], essentials: ListItem[], groceries: Map<number, Grocery>): CheckItem[] {
   const items = new Map<number, CheckItem>();
   for (const m of merged) {

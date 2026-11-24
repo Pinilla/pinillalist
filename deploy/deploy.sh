@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Deploys the main branch of pinillalist on server1. Run as pinilla:  ~/pinillalist/deploy/deploy.sh
-# Pulls main into /opt/pinillalist, runs the tests, builds, backs up the database,
-# applies migrations and restarts the service. Stops at the first failure.
 set -euo pipefail
 
 APP=/opt/pinillalist
@@ -24,9 +21,6 @@ npm ci
 npm test
 npm run build
 
-# The data folder is readable only by the pinillalist user, so check for the
-# database as that user. A plain [ -f ] runs as pinilla, always fails, and
-# skips the backup without saying so.
 if sudo -u pinillalist test -f "$DATA/pinillalist.db"; then
   sudo -u pinillalist env PINILLALIST_DATA="$DATA" /opt/node/bin/node scripts/backup-db.ts
 else

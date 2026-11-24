@@ -3,7 +3,6 @@ import type { Db } from "./db/index.ts";
 import { getSetting, setSetting } from "./repo.ts";
 
 export const COOKIE = "pinillalist";
-/** Browsers cap cookie lifetimes at 400 days. */
 export const COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
 
 export function hashPassword(password: string): string {
@@ -25,7 +24,6 @@ export function setPassword(db: Db, password: string) {
   setSetting(db, "password_hash", hashPassword(password));
 }
 
-/** The secret that signs the login cookie, made on first use. */
 export function cookieSecret(db: Db): string {
   let secret = getSetting(db, "cookie_secret");
   if (!secret) {
@@ -35,17 +33,12 @@ export function cookieSecret(db: Db): string {
   return secret;
 }
 
-/**
- * The value stored in the login cookie. It changes when the password changes,
- * so setting a new password signs out every phone.
- */
 export function sessionValue(db: Db): string | null {
   const hash = getSetting(db, "password_hash");
   if (!hash) return null;
   return "household." + createHash("sha256").update(hash).digest("base64url").slice(0, 16);
 }
 
-/** Counts failed logins per address and blocks an address after 10 failures in 15 minutes. */
 export class LoginLimiter {
   private failures = new Map<string, number[]>();
   private limit: number;

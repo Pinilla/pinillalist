@@ -24,12 +24,10 @@ test("a wrong password stays on the login page", async ({ page }) => {
 test("a full weekly order builds the right Walmart and Amazon cart links", async ({ page }) => {
   await login(page);
 
-  // 1. Pick recipes. It's the first step, so there's no Back button.
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   await page.getByRole("button", { name: "Chili" }).click();
   await page.getByRole("button", { name: "Tacos" }).click();
   await expect(page.getByText("2 chosen.")).toBeVisible();
-  // On a phone the picked recipes stay at the top while scrolling the grid.
   const picked = page.getByRole("region", { name: "This week" });
   await expect(picked).toContainText("Chili");
   await expect(picked).toContainText("Tacos");
@@ -40,21 +38,18 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await page.getByRole("button", { name: "Tacos" }).click();
   await next(page);
 
-  // 2. Stock check: one walk through the house, with the Essentials mixed in.
   await expect(page.getByRole("heading", { name: "Stock check" })).toBeVisible();
   const card = page.locator(".card");
   const where = card.locator(".where");
   const quantity = card.getByRole("group", { name: "Quantity to buy" });
   const status = quantity.getByRole("status");
 
-  // Master bathroom: an Essential starts at 0, so Next means there's enough.
   await expect(where).toHaveText("Master bathroom");
   await expect(card.locator(".item-name")).toHaveText("Toilet paper");
   await expect(card).toContainText("Extra roll in the closet");
   await expect(status).toHaveText("0");
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
-  // Pantry: each recipe's ingredient line, starting at 1.
   await expect(where).toHaveText("Pantry");
   await expect(card.locator(".item-name")).toHaveText("Onion");
   await expect(card).toContainText("Yellow onions, 3 lb bag");
@@ -71,24 +66,20 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await quantity.getByRole("button", { name: "More" }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
-  // Fridge: taking a quantity down to 0 means there's enough at home, and the next card comes up.
   await expect(where).toHaveText("Fridge");
   await expect(card.locator(".item-name")).toHaveText("Ground beef");
   await quantity.getByRole("button", { name: "Less" }).click();
 
-  // The deli cheese is an Essential sold by the pound.
   await expect(card.locator(".item-name")).toHaveText("Deli American cheese");
   await expect(status).toHaveText("0");
   for (let i = 0; i < 4; i++) await quantity.getByRole("button", { name: "More" }).click();
   await expect(status).toHaveText("1");
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
-  // Summary after the last card, grouped by location. Change Ground beef from the summary.
   await expect(page.getByText("4 of 6 to buy.")).toBeVisible();
   await expect(page.locator(".step-body h2")).toHaveText(["Master bathroom", "Pantry", "Fridge"]);
   await expect(page.getByRole("button", { name: /Ground beef/ })).toContainText("Have it");
   await expect(page.getByRole("button", { name: /Tortillas/ })).toContainText("Buy 2");
-  // Tapping an item opens its card, and Next goes on through the cards after it.
   await page.getByRole("button", { name: /Ground beef/ }).click();
   await expect(card.locator(".item-name")).toHaveText("Ground beef");
   await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -97,20 +88,17 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByText("5 of 6 to buy.")).toBeVisible();
 
-  // Coming back to the stock check opens the cards, not the summary.
   await next(page);
   await page.getByRole("button", { name: "Back" }).click();
   await expect(card.locator(".item-name")).toHaveText("Toilet paper");
   await page.getByRole("tab", { name: "Anything else" }).click();
   await expect(page.getByRole("heading", { name: "Anything else" })).toBeVisible();
 
-  // 3. Anything else: a grocery that isn't in the catalog yet.
   await page.getByLabel("Search the catalog").fill("Bananas");
   await page.getByRole("button", { name: /Add "Bananas" as a new grocery/ }).click();
   await expect(page.locator(".list").getByText("Bananas")).toBeVisible();
   await next(page);
 
-  // 4. Fill carts
   const walmart = page.getByRole("link", { name: "Fill my Walmart cart" });
   const amazon = page.getByRole("link", { name: "Fill my Amazon cart" });
   await expect(walmart).toHaveAttribute(
@@ -122,13 +110,11 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
   await expect(byHand).toContainText("Cumin");
   await expect(byHand).toContainText("Bananas");
 
-  // Removing an item takes it out of the link.
   await page.getByRole("button", { name: "Remove Ground beef" }).click();
   await expect(walmart).toHaveAttribute("href", "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,22222222_1");
   await page.getByRole("button", { name: "Put back" }).click();
   await expect(walmart).toHaveAttribute("href", /10450114_1/);
 
-  // Starting over clears this phone's order.
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Start a new order" }).click();
   await expect(page.getByRole("heading", { name: "Pick recipes" })).toBeVisible();
@@ -139,7 +125,6 @@ test("closing the app resumes the order where it left off", async ({ page }) => 
   await login(page);
   await page.getByRole("button", { name: "Cookies" }).click();
   await next(page);
-  // The walk starts with the Essentials and ends with Flour, which has no location.
   await expect(page.locator(".card .item-name")).toHaveText("Toilet paper");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.locator(".card .item-name")).toHaveText("Deli American cheese");
@@ -161,7 +146,6 @@ test("picking a recipe asks about its optional ingredients and the recipes it's 
   await expect(page.getByText("1 chosen.")).toBeVisible();
   await next(page);
 
-  // Made: the salsa's ingredients come in, labeled with both recipes. Only the picked topping comes in.
   const names = async () => {
     const seen: string[] = [];
     while (await page.locator(".card").count()) {
@@ -179,7 +163,6 @@ test("picking a recipe asks about its optional ingredients and the recipes it's 
   await expect(page.locator(".card .uses li")).toHaveText(["1 lb, for Salsa verde (in Pozole)"]);
   expect(await names()).toEqual(["Tomatillos", "Lime", "Radishes"]);
 
-  // Buy it instead: the salsa grocery replaces the salsa's ingredients.
   await page.getByRole("tab", { name: "Pick recipes" }).click();
   await page.getByRole("button", { name: "Pozole", exact: true }).click();
   await expect(sheet.getByLabel("Radishes, sliced")).toBeChecked();
@@ -190,12 +173,10 @@ test("picking a recipe asks about its optional ingredients and the recipes it's 
   await expect(page.locator(".card .item-name")).toHaveText("Green salsa");
   await expect(page.locator(".card .uses li")).toHaveText(["1 cup, for Pozole"]);
   await page.getByRole("button", { name: "Have it" }).click();
-  // The cards after it were answered before, so the summary is a tap away.
   await page.getByRole("button", { name: "See all items" }).click();
   await expect(page.getByRole("button", { name: /Green salsa/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Tomatillos/ })).toHaveCount(0);
 
-  // Unpicking from the sheet drops the recipe and its choices.
   await page.getByRole("tab", { name: "Pick recipes" }).click();
   await page.getByRole("button", { name: "Pozole", exact: true }).click();
   await sheet.getByRole("button", { name: "Unpick" }).click();
@@ -215,7 +196,6 @@ test("collection chips combine, so two chips show recipes from either", async ({
   await expect(tiles).toHaveText(["Chili", "Cookies", "Tacos"]);
   await expect(chips.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
 
-  // Turning one chip back off leaves the other on.
   await chips.getByRole("button", { name: "Easy Dinner" }).click();
   await expect(tiles).toHaveText(["Cookies"]);
   await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute("aria-pressed", "true");
@@ -224,7 +204,6 @@ test("collection chips combine, so two chips show recipes from either", async ({
   await expect(tiles).toHaveCount(5);
   await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute("aria-pressed", "false");
 
-  // Pick recipes in the weekly order works the same way.
   await page.getByRole("link", { name: "Order" }).click();
   await chips.getByRole("button", { name: "Easy Dinner" }).click();
   await chips.getByRole("button", { name: "Desserts" }).click();

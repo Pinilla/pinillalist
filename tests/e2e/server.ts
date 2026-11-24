@@ -1,4 +1,3 @@
-// Starts the app on a throwaway database with a few known recipes and products, for Playwright.
 import { serve } from "@hono/node-server";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,7 +37,6 @@ repo.createRecipe(db, {
 });
 const desserts = repo.listCollections(db).find((c) => c.name === "Desserts")!;
 repo.createRecipe(db, { ...base, name: "Cookies", collectionIds: [desserts.id], ingredients: [ing("Flour", "2 cups")] });
-// Pozole has optional toppings and a salsa made from another recipe.
 const salsa = repo.createRecipe(db, { ...base, name: "Salsa verde", collectionIds: [], ingredients: [ing("Tomatillos", "1 lb"), ing("Lime", "1", "juiced")] });
 repo.createRecipe(db, {
   ...base,
@@ -74,7 +72,6 @@ repo.addListItem(db, essentials.id, { groceryName: "Deli American cheese" });
 link("Toilet paper", product("amazon", "B000000001", "Toilet paper 24 rolls"));
 link("Deli American cheese", product("walmart", "22222222", "Deli American cheese", "pound"));
 
-// The stock check walks Master bathroom, then Pantry, then Fridge. Flour has no location, so it comes last.
 keep("Toilet paper", "master_bathroom");
 keep("Onion", "pantry");
 keep("Cumin", "pantry");
