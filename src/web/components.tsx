@@ -9,19 +9,18 @@ export function Stepper({
   onChange,
   min = 0,
   step = 1,
-  large = false,
+  className = "",
   label,
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
   step?: number;
-  large?: boolean;
+  className?: string;
   label: string;
 }) {
-  const round = (n: number) => Math.round(n * 100) / 100;
   return (
-    <span className={`stepper${large ? " large" : ""}`} role="group" aria-label={label}>
+    <span className={`stepper ${className}`.trim()} role="group" aria-label={label}>
       <button type="button" aria-label="Less" disabled={value - step < min} onClick={() => onChange(round(Math.max(min, value - step)))}>
         −
       </button>
@@ -31,6 +30,10 @@ export function Stepper({
       </button>
     </span>
   );
+}
+
+function round(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 export function CollectionChips({
@@ -121,32 +124,31 @@ export function useDesktop(): boolean {
   );
 }
 
+export function Panel({ title, actions, children }: { title: ReactNode; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="panel stack">
+      <div className="row between nowrap">
+        <h2 className="grow">{title}</h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function Page({
   title,
   back,
   actions,
   children,
   width,
-  embedded = false,
 }: {
   title: ReactNode;
   back?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   width?: "medium";
-  embedded?: boolean;
 }) {
-  if (embedded) {
-    return (
-      <section className="panel stack">
-        <div className="row between nowrap">
-          <h2 className="grow">{title}</h2>
-          {actions}
-        </div>
-        {children}
-      </section>
-    );
-  }
   return (
     <main className={`wrap stack${width ? ` ${width}` : ""}`}>
       {back}
@@ -163,4 +165,19 @@ export function minutes(seconds: number | null): string {
   if (!seconds) return "";
   const m = Math.round(seconds / 60);
   return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ""}`.trim() : `${m} min`;
+}
+
+export function useBusy() {
+  const [busy, setBusy] = useState(false);
+  const run = async (work: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await work();
+    } catch (err) {
+      toast((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, run };
 }
