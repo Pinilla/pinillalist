@@ -246,61 +246,67 @@ export function getRecipes(db: Conn, ids: number[]): Recipe[] {
   if (!ids.length) return [];
   const rows = db.select().from(recipes).where(inArray(recipes.id, ids)).all();
   const cols = collectionIdsByRecipe(db, ids);
-  const ings = db
-    .select({ i: ingredients, name: groceries.name })
-    .from(ingredients)
-    .leftJoin(groceries, eq(groceries.id, ingredients.groceryId))
-    .where(inArray(ingredients.recipeId, ids))
-    .orderBy(asc(ingredients.recipeId), asc(ingredients.position))
-    .all();
-  const subIds = [...new Set(ings.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null))];
-  const subNames = new Map(
-    subIds.length
-      ? db.select({ id: recipes.id, name: recipes.name }).from(recipes).where(inArray(recipes.id, subIds)).all().map((r) => [r.id, r.name])
-      : [],
-  );
-  const byRecipe = new Map<number, IngredientRow[]>();
-  for (const { i, name } of ings) {
-    const row: IngredientRow =
-      i.kind === "heading" || i.groceryId === null
-        ? { kind: "heading", id: i.id, text: i.heading }
-        : {
-            kind: "ingredient",
-            id: i.id,
-            groceryId: i.groceryId,
-            groceryName: name ?? "",
-            cookingAmount: i.cookingAmount,
-            preparation: i.preparation,
-            optional: i.optional,
-            subRecipe: i.subRecipeId !== null ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" } : null,
-          };
-    byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), row]);
-  }
-  const byId = new Map(
-    rows.map((r) => [
-      r.id,
-      {
-        id: r.id,
-        name: r.name,
-        photo: r.photo,
-        collectionIds: cols.get(r.id) ?? [],
-        servings: r.servings,
-        prepTime: r.prepTime,
-        cookTime: r.cookTime,
-        steps: r.steps,
-        note: r.note,
-        sourceName: r.sourceName,
-        sourceUrl: r.sourceUrl,
-        rating: r.rating,
-        ingredients: byRecipe.get(r.id) ?? [],
-        hasExtras: (byRecipe.get(r.id) ?? []).some((i) => i.kind === "ingredient" && (i.optional || i.subRecipe !== null)),
-      } satisfies Recipe,
-    ]),
-  );
+  const ingredientsOf = ingredientRowsByRecipe(db, ids);
+  const byId = new Map(rows.map((r) => [r.id, toRecipe(r, cols.get(r.id) ?? [], ingredientsOf.get(r.id) ?? [])]));
   return ids.flatMap((id) => {
     const r = byId.get(id);
     return r ? [r] : [];
   });
+}
+
+type IngredientRecord = typeof ingredients.$inferSelect;
+
+function ingredientRowsByRecipe(db: Conn, recipeIds: number[]): Map<number, IngredientRow[]> {
+  const found = db
+    .select({ i: ingredients, name: groceries.name })
+    .from(ingredients)
+    .leftJoin(groceries, eq(groceries.id, ingredients.groceryId))
+    .where(inArray(ingredients.recipeId, recipeIds))
+    .orderBy(asc(ingredients.recipeId), asc(ingredients.position))
+    .all();
+  const subNames = recipeNames(db, found.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null));
+  const byRecipe = new Map<number, IngredientRow[]>();
+  for (const { i, name } of found) byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), toIngredientRow(i, name ?? "", subNames)]);
+  return byRecipe;
+}
+
+function recipeNames(db: Conn, ids: number[]): Map<number, string> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Map();
+  return new Map(db.select({ id: recipes.id, name: recipes.name }).from(recipes).where(inArray(recipes.id, unique)).all().map((r) => [r.id, r.name]));
+}
+
+function toIngredientRow(i: IngredientRecord, groceryName: string, subNames: Map<number, string>): IngredientRow {
+  if (i.kind === "heading" || i.groceryId === null) return { kind: "heading", id: i.id, text: i.heading };
+  return {
+    kind: "ingredient",
+    id: i.id,
+    groceryId: i.groceryId,
+    groceryName,
+    cookingAmount: i.cookingAmount,
+    preparation: i.preparation,
+    optional: i.optional,
+    subRecipe: i.subRecipeId !== null ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" } : null,
+  };
+}
+
+function toRecipe(r: typeof recipes.$inferSelect, collectionIds: number[], rows: IngredientRow[]): Recipe {
+  return {
+    id: r.id,
+    name: r.name,
+    photo: r.photo,
+    collectionIds,
+    servings: r.servings,
+    prepTime: r.prepTime,
+    cookTime: r.cookTime,
+    steps: r.steps,
+    note: r.note,
+    sourceName: r.sourceName,
+    sourceUrl: r.sourceUrl,
+    rating: r.rating,
+    ingredients: rows,
+    hasExtras: rows.some((i) => i.kind === "ingredient" && (i.optional || i.subRecipe !== null)),
+  };
 }
 
 export function getRecipe(db: Conn, id: number): Recipe {
