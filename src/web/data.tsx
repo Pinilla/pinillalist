@@ -43,14 +43,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    void reload();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void reload();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [reload]);
+  useReloadOnReturn(reload);
 
   const value = useMemo<Data>(
     () => ({
@@ -62,17 +55,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loaded,
       error,
       reload,
-      setGrocery: (g) =>
-        setGroceries((all) => {
-          const next = all.some((x) => x.id === g.id) ? all.map((x) => (x.id === g.id ? g : x)) : [...all, g];
-          return next.sort((a, b) => a.name.localeCompare(b.name));
-        }),
-      setList: (l) => setLists((all) => (all.some((x) => x.id === l.id) ? all.map((x) => (x.id === l.id ? l : x)) : [...all, l])),
+      setGrocery: (g) => setGroceries((all) => replaceById(all, g).sort((a, b) => a.name.localeCompare(b.name))),
+      setList: (l) => setLists((all) => replaceById(all, l)),
     }),
     [groceries, recipes, collections, lists, loaded, error, reload],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+}
+
+function useReloadOnReturn(reload: () => Promise<void>) {
+  useEffect(() => {
+    void reload();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reload]);
+}
+
+function replaceById<T extends { id: number }>(all: T[], item: T): T[] {
+  return all.some((x) => x.id === item.id) ? all.map((x) => (x.id === item.id ? item : x)) : [...all, item];
 }
 
 export function useData(): Data {
