@@ -39,10 +39,6 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "product", label: "Product" },
 ];
 
-/**
- * Sorts groceries for the desktop table. Empty units and missing products go
- * last either way. Locations sort in walk order, with no location last.
- */
 function sortGroceries(list: Grocery[], key: SortKey, descending: boolean, usage: Usage): Grocery[] {
   const text = (g: Grocery) => (key === "unit" ? g.unit : key === "product" ? (g.product ? productLabel(g.product) : "") : g.name);
   const uses = (g: Grocery) => (usage[g.id]?.recipes ?? 0) + (usage[g.id]?.lists ?? 0);

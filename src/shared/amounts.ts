@@ -6,12 +6,10 @@ const VULGAR: Record<string, number> = {
 
 const VULGAR_CHARS = Object.keys(VULGAR).join("");
 
-/** Matches a leading number: "2", "1.5", ".125", "1/2", "1 1/2", "½", "1½", "1 ½". */
 export const NUMBER_PATTERN = new RegExp(
   `^(?:(\\d+)\\s*([${VULGAR_CHARS}])|(\\d+)\\s+(\\d+)\\/(\\d+)|(\\d+)\\/(\\d+)|([${VULGAR_CHARS}])|(\\d*\\.\\d+|\\d+))`,
 );
 
-/** Reads a number at the start of the text. Returns the value and the rest of the text. */
 export function readNumber(text: string): { value: number; rest: string } | null {
   const m = NUMBER_PATTERN.exec(text.trim());
   if (!m) return null;
@@ -25,7 +23,6 @@ export function readNumber(text: string): { value: number; rest: string } | null
   return { value, rest: text.trim().slice(m[0].length).trim() };
 }
 
-/** Formats an amount without float noise: 2, 1.5, 0.33. */
 export function formatNumber(n: number): string {
   return String(Math.round(n * 100) / 100);
 }

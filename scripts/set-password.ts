@@ -1,5 +1,3 @@
-// Sets the household password. Every phone has to log in again afterwards.
-// Usage: npm run set-password   (asks for the password without echoing it)
 import { mkdirSync } from "node:fs";
 import { setPassword } from "../src/server/auth.ts";
 import { loadConfig } from "../src/server/config.ts";

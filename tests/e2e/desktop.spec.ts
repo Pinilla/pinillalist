@@ -1,7 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// The desktop layout: a sidebar, a catalog table with a side panel, and lists side by side.
-// These tests only read, so the phone tests that follow see the same seeded data.
 test.use({ viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false });
 
 const PASSWORD = "e2e household password";
@@ -24,7 +22,6 @@ test("the navigation is a sidebar on the left", async ({ page }) => {
   const box = (await nav.boundingBox())!;
   expect(box.x + box.width).toBeLessThan(260);
   expect(box.height).toBeGreaterThan(150);
-  // The page content starts to the right of the sidebar.
   const heading = (await page.getByRole("heading", { name: "Pick recipes" }).boundingBox())!;
   expect(heading.x).toBeGreaterThan(box.x + box.width);
   await expectNoSidewaysScroll(page);
@@ -55,11 +52,9 @@ test("Back and Next are centered on every step, pinned to the bottom on Pick rec
     return { top: first.y, bottom: first.y + first.height, bodyTop: b.y, bodyBottom: b.y + b.height };
   };
 
-  // Pick recipes: no Back button, and Next sticks to the bottom of the window. A short window makes the grid scroll.
   await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 420 });
   const nextButton = page.getByRole("button", { name: "Next: Stock check" });
-  // Centered over the recipe grid, not the whole page with the "This week" panel.
   const centerOf = (b: { x: number; width: number }) => b.x + b.width / 2;
   for (const width of [1280, 1000]) {
     await page.setViewportSize({ width, height: 420 });
@@ -70,7 +65,6 @@ test("Back and Next are centered on every step, pinned to the bottom on Pick rec
   const pinned = (await nextButton.boundingBox())!;
   expect(pinned.y + pinned.height).toBeGreaterThan(420 - 40);
   expect(pinned.y + pinned.height).toBeLessThanOrEqual(420);
-  // At the end of the page the last row of recipes ends above the bar, so nothing stays hidden under it.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(nextButton).toBeInViewport();
   const tiles = page.locator(".grid .tile");
@@ -104,7 +98,6 @@ test("the catalog is a sortable table and a grocery opens beside it", async ({ p
   await expect(page).toHaveURL(/\/catalog\/\d+$/);
   const panel = page.getByRole("complementary", { name: "Grocery details" });
   await expect(panel.getByRole("heading", { name: "Flour" })).toBeVisible();
-  // The table is still on screen next to the panel.
   await expect(names.first()).toBeVisible();
   await panel.getByRole("link", { name: "Close" }).click();
   await expect(panel).toBeHidden();

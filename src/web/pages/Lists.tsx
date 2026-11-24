@@ -11,7 +11,6 @@ export function ListsPage({ selectedId }: { selectedId?: number }) {
   const desktop = useDesktop();
   const [, navigate] = useLocation();
   const [name, setName] = useState("");
-  // On a desktop a list is always open beside the index, the first one until another is chosen.
   const openId = desktop ? (selectedId ?? lists[0]?.id) : undefined;
 
   const index = (

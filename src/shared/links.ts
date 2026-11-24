@@ -7,11 +7,6 @@ export type ParsedLink =
 export const WALMART_ID = /^\d{5,15}$/;
 export const ASIN = /^[A-Z0-9]{10}$/;
 
-/**
- * Reads the store and product ID from a pasted product link.
- * Walmart: the number after /ip/ (walmart.com/ip/<slug>/<id> or /ip/<id>).
- * Amazon: the 10-character code after /dp/ or /gp/product/.
- */
 export function parseProductLink(input: string): ParsedLink {
   const text = input.trim();
   const found = /https?:\/\/\S+/i.exec(text);

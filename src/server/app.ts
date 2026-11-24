@@ -17,9 +17,7 @@ import * as repo from "./repo.ts";
 export interface AppOptions {
   db: Db;
   photosDir: string;
-  /** The built UI. Leave out in tests and in development, where Vite serves it. */
   distDir?: string;
-  /** Mark the cookie Secure. True behind nginx's HTTPS. */
   secureCookie?: boolean;
 }
 
@@ -41,7 +39,6 @@ async function body(c: Context): Promise<Record<string, unknown>> {
     const value = await c.req.json();
     if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
   } catch {
-    // fall through
   }
   bad("Send a JSON object.");
 }
@@ -106,7 +103,6 @@ function recipeInput(b: Record<string, unknown>): repo.RecipeInput {
 }
 
 function clientAddress(c: Context): string {
-  // The server listens only on 127.0.0.1 behind nginx, which sets X-Real-IP.
   return c.req.header("x-real-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
 }
 
@@ -124,8 +120,6 @@ export function createApp(options: AppOptions) {
     return c.json({ error: "Something went wrong on the server." }, 500);
   });
 
-  // Login. These are the only routes that work without the cookie, along with the
-  // web app manifest and icons, which phones fetch without cookies.
   app.get("/login", (c) => c.html(loginPage({ needsSetup: !sessionValue(db) })));
 
   app.post("/login", async (c) => {
@@ -170,8 +164,6 @@ export function createApp(options: AppOptions) {
   });
 
   const api = new Hono();
-
-  // Catalog
 
   api.get("/groceries", (c) => c.json(repo.listGroceries(db)));
 
@@ -233,8 +225,6 @@ export function createApp(options: AppOptions) {
     return c.body(null, 204);
   });
 
-  // Recipes
-
   api.get("/collections", (c) => c.json(repo.listCollections(db)));
 
   api.post("/collections", async (c) => c.json(repo.createCollection(db, str((await body(c)).name, "name")), 201));
@@ -275,8 +265,6 @@ export function createApp(options: AppOptions) {
     if (old) await unlink(path.join(photosDir, old)).catch(() => {});
     return c.json(repo.getRecipe(db, recipeId));
   });
-
-  // Lists
 
   api.get("/lists", (c) => c.json(repo.listLists(db)));
 
@@ -333,7 +321,6 @@ export function createApp(options: AppOptions) {
   if (distDir) {
     const index = path.join(distDir, "index.html");
     app.use("*", serveStatic({ root: distDir }));
-    // Every other page is the single-page app.
     app.get("*", (c) => {
       if (!existsSync(index)) return c.text("The UI isn't built. Run npm run build.", 500);
       return c.html(readFileSync(index, "utf8"));

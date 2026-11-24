@@ -13,7 +13,6 @@ function singular(word: string): string {
   return word;
 }
 
-/** The name used to decide that two ingredients are the same grocery. */
 export function groceryKey(name: string): string {
   return squash(name.toLowerCase().replace(/[^\p{L}\p{N}\s&]/gu, " "))
     .split(" ")
@@ -23,10 +22,6 @@ export function groceryKey(name: string): string {
 
 const JOINING_WORDS = new Set(["and", "or", "of", "&", "with"]);
 
-/**
- * True when one name is the other with one or two words added in front, like
- * "onion" and "yellow onion". Combined groceries such as "salt and pepper" never match.
- */
 export function isNearDuplicate(a: string, b: string): boolean {
   const ka = groceryKey(a).split(" ");
   const kb = groceryKey(b).split(" ");

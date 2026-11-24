@@ -51,18 +51,8 @@ export interface ImportReport {
   skippedLists: string[];
 }
 
-/**
- * Only the Essentials list comes over. "Quick Things" holds personal to-dos,
- * and the owner chose on 2026-11-08 to leave out "Store" and the empty "My Grocery List".
- */
 const ESSENTIALS = "Weekly Essentials";
 
-/**
- * Loads the household's AnyList export into an empty database: recipes with
- * their collections and photos, the catalog of groceries their ingredients
- * point at, and the Essentials list. Near-duplicate groceries become merge
- * suggestions for the owner to review in the app.
- */
 export function importAnyList(
   db: Db,
   data: AnyListExport,
@@ -78,7 +68,6 @@ export function importAnyList(
     photos: 0, missingPhotos: [], essentials: 0, suggestions: 0, skippedLists: [],
   };
 
-  // Parse every ingredient first, so each grocery's unit can come from all its uses.
   const parsed = new Map<string, ReturnType<typeof parseIngredient>[]>();
   const unitVotes = new Map<string, Map<string, number>>();
   for (const recipe of source.recipes) {
@@ -99,7 +88,6 @@ export function importAnyList(
   const unitFor = (key: string): string => {
     const votes = unitVotes.get(key);
     if (!votes) return "";
-    // Most votes wins. A tie goes to counting by name.
     return [...votes].sort((a, b) => b[1] - a[1] || (a[0] === "" ? -1 : b[0] === "" ? 1 : 0))[0]![0];
   };
 
@@ -121,7 +109,6 @@ export function importAnyList(
 
     for (const r of source.recipes) {
       let photo: string | null = null;
-      // The export saved each recipe's first photo as <recipe id>-0.jpg.
       if (r.photoIds?.length) {
         const file = `${r.identifier}-0.jpg`;
         const from = path.join(opts.photosFrom, file);
@@ -199,7 +186,6 @@ export function importAnyList(
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
         if (isNearDuplicate(all[i]!.name, all[j]!.name)) {
-          // Put the shorter name first: it is usually the one to keep.
           const [a, b] = all[i]!.name.length <= all[j]!.name.length ? [all[i]!, all[j]!] : [all[j]!, all[i]!];
           addMergeSuggestion(tx, a.id, b.id);
           report.suggestions++;

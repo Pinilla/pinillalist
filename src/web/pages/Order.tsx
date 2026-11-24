@@ -39,11 +39,9 @@ function save(state: OrderState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // Private browsing: the order still works, it just won't survive closing the app.
   }
 }
 
-/** Deli products sold by the pound go up a quarter pound at a time. */
 function qtyStep(grocery: Grocery | undefined): number {
   return grocery?.product?.soldBy === "pound" ? 0.25 : 1;
 }
@@ -62,7 +60,6 @@ export function OrderPage() {
       return next;
     });
 
-  // Fetch the chosen recipes in full, in the order they were picked, and the recipes their ingredients are made from.
   const idsKey = state.recipeIds.join(",");
   useEffect(() => {
     if (!idsKey) {
@@ -91,21 +88,17 @@ export function OrderPage() {
     () => buildStockCheck(mergeIngredients(recipes, groceryById, state.choices, subRecipes), essentials, groceryById),
     [recipes, subRecipes, state.choices, essentials, groceryById],
   );
-  // Until the picked recipes arrive, the walk would be Essentials only and then reshuffle.
   const recipesLoading = idsKey !== "" && recipesFor !== idsKey;
   const lines = useMemo(() => orderLines(state, check, groceryById), [state, check, groceryById]);
 
   const go = (step: number) => {
     setState((s) => {
       const next = { ...s, step: Math.max(0, Math.min(STEPS.length - 1, step)) };
-      // The stock check always opens on a card, the first unanswered one if any, never on the summary.
       return next.step === 1 ? openStockCheck(next, check) : next;
     });
     window.scrollTo(0, 0);
   };
 
-
-  // When the cards change while the stock check is open (the picked recipes finished loading), go to the first new one.
   const checkKey = check.map((c) => c.groceryId).join(",");
   useEffect(() => {
     setStateRaw((s) => {
@@ -116,7 +109,6 @@ export function OrderPage() {
       save(next);
       return next;
     });
-    // Only when the set of cards changes, so moving back to an answered card stays put.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkKey]);
 
@@ -290,11 +282,6 @@ const MODES: { mode: SubRecipeMode; label: string }[] = [
   { mode: "have", label: "Have it" },
 ];
 
-/**
- * Asks about a recipe's extras as it's picked: whether to make, buy or skip
- * each ingredient made from another recipe (make is the default), and which
- * optional ingredients to try this week (none by default).
- */
 function ExtrasSheet({
   summary,
   picked,
@@ -494,12 +481,6 @@ function StockCheck({
   );
 }
 
-/**
- * One grocery in the stock check: where to look, the ingredient lines that ask
- * for it, and how many of its product to buy. A recipe grocery starts at 1 and
- * an Essential at 0. Taking the quantity down to 0 means there's enough at home
- * and moves to the next grocery.
- */
 function StockCard({
   item,
   position,

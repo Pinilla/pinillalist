@@ -7,7 +7,6 @@ import { migrateDb, openDb } from "./db/index.ts";
 const config = loadConfig();
 mkdirSync(config.photosDir, { recursive: true });
 const db = openDb(config.dbFile);
-// Deploys apply migrations before restarting, so this only matters in development.
 migrateDb(db);
 
 const app = createApp({ db, photosDir: config.photosDir, distDir: config.distDir, secureCookie: config.secureCookie });

@@ -33,10 +33,6 @@ export function Stepper({
   );
 }
 
-/**
- * The collection chips above a recipe grid. Each chip turns on or off on its
- * own, and the grid shows recipes in any chip that's on. All turns them all off.
- */
 export function CollectionChips({
   collections,
   chosen,
@@ -90,7 +86,6 @@ export function Thumb({ photo, name, className = "thumb" }: { photo: string | nu
 
 let showToast: (text: string) => void = () => {};
 
-/** Shows a short message above the tab bar. */
 export function toast(text: string) {
   showToast(text);
 }
@@ -115,7 +110,6 @@ export function ToastHost() {
 
 const DESKTOP = "(min-width: 900px)";
 
-/** True when the window is wide enough for the sidebar layout. Matches the breakpoint in styles.css. */
 export function useDesktop(): boolean {
   return useSyncExternalStore(
     (notify) => {
@@ -127,10 +121,6 @@ export function useDesktop(): boolean {
   );
 }
 
-/**
- * A screen with a title. `embedded` renders it as a panel inside another screen, which the
- * desktop layout uses to show a grocery or a list next to its index.
- */
 export function Page({
   title,
   back,

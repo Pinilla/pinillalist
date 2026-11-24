@@ -26,7 +26,6 @@ function squash(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-/** Removes wrapping parentheses, commas and spaces: " ((to taste))" -> "to taste". */
 function unwrap(text: string): string {
   let t = squash(text);
   for (;;) {
@@ -40,7 +39,6 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** Peels "30g 6 cloves" off the front of a name that has its amount inside it. */
 function peelAmount(name: string): { amount: string; rest: string } {
   const amounts: string[] = [];
   let rest = name;
@@ -51,7 +49,6 @@ function peelAmount(name: string): { amount: string; rest: string } {
     let after = num.rest;
     let unit = "";
     const m = MEASURE.exec(after);
-    // Count the next word as a unit only when another word still follows it.
     if (m && after.slice(m[0].length).trim() && isUnitWord(m[0])) {
       unit = m[0];
       after = after.slice(m[0].length).trim();
@@ -67,18 +64,12 @@ function isUnitWord(word: string): boolean {
   return UNIT_WORDS.test(word);
 }
 
-/**
- * Splits an AnyList ingredient into a grocery name, a cooking amount and a
- * preparation. Preparations come from the note, from parentheses or a comma in
- * the name, and from words like "minced" in front of the name.
- */
 export function parseIngredient(input: AnyListIngredient): ParsedIngredient {
   const preps: string[] = [];
   const quantity = unwrap(input.quantity ?? "");
   let cookingAmount = quantity;
   let name = squash(input.name).replace(/^[∙•·.\s]+/, "");
 
-  // AnyList sometimes splits "2 and 1/2 cups flour" into a quantity of "2" and a name of "and 1/2 cups flour".
   const andMatch = /^and\s+(?=[\d½⅓⅔¼¾⅛])/i.exec(name);
   if (andMatch) {
     const peeled = peelAmount(name.slice(andMatch[0].length));
@@ -87,7 +78,6 @@ export function parseIngredient(input: AnyListIngredient): ParsedIngredient {
       name = peeled.rest;
     }
   } else {
-    // Some recipes put the amount inside the name: "7g salt", "30g 6 cloves minced garlic".
     const peeled = peelAmount(name);
     if (peeled.amount && peeled.rest) {
       const amount = peeled.amount.replace(/(\d)\s+(g|kg|ml)\b/g, "$1$2");
@@ -96,10 +86,8 @@ export function parseIngredient(input: AnyListIngredient): ParsedIngredient {
     }
   }
 
-  // "1 packet of chili seasoning" leaves "of" at the front once the amount is gone.
   name = name.replace(/^(of|\/)\s+/i, "");
 
-  // A size belongs with the amount ("1 large"), not the grocery, so "Large egg" is Egg.
   const sized = name.split(" ");
   while (sized.length > 1 && SIZE_WORDS.has(sized[0]!.toLowerCase())) {
     const size = sized.shift()!.toLowerCase();
@@ -107,21 +95,18 @@ export function parseIngredient(input: AnyListIngredient): ParsedIngredient {
   }
   name = sized.join(" ");
 
-  // Leading preparation words: "minced garlic" -> garlic, minced.
   const words = name.split(" ");
   const leading: string[] = [];
   while (words.length > 1 && PREP_WORDS.has(words[0]!.toLowerCase())) leading.push(words.shift()!.toLowerCase());
   if (leading.length) preps.push(leading.join(" "));
   name = words.join(" ");
 
-  // Parenthesized parts of the name.
   const parens: string[] = [];
   name = name.replace(/\(([^)]*)\)?/g, (_, inner: string) => {
     parens.push(unwrap(inner));
     return " ";
   });
 
-  // Anything after the first comma.
   const comma = name.indexOf(",");
   if (comma !== -1) {
     const after = unwrap(name.slice(comma + 1));
@@ -156,11 +141,6 @@ const COUNT_UNITS: Record<string, string> = {
   head: "head", heads: "head",
 };
 
-/**
- * Reads the count and unit from a cooking amount that already counts the grocery,
- * such as "2" (onions), "1 large", "1 lb" or "1 can". The import uses it to give
- * each grocery a unit. Returns null for cups, spoons, grams, pinches and ranges.
- */
 export function countedAmount(cookingAmount: string): { amount: number; unit: string } | null {
   const num = readNumber(cookingAmount);
   if (!num || num.value <= 0) return null;

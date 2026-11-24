@@ -3,7 +3,6 @@ import { countedAmount, parseIngredient } from "./parse.ts";
 
 describe("parseIngredient", () => {
   it.each([
-    // [name, quantity, note] -> [grocery, cooking amount, preparation]
     [["Ground Beef", undefined, ""], ["Ground Beef", "", ""]],
     [["butter ", "3 Tbsp", "((unsalted and divided))"], ["Butter", "3 Tbsp", "unsalted and divided"]],
     [["garlic", "4 cloves", " ((minced))"], ["Garlic", "4 cloves", "minced"]],

@@ -1,7 +1,6 @@
 import { ASIN, WALMART_ID } from "./links.ts";
 import type { Product, Store } from "./types.ts";
 
-/** One thing the weekly order wants from a store: a grocery and how many of its product to buy. */
 export interface OrderLine {
   groceryId: number;
   groceryName: string;
@@ -17,9 +16,7 @@ export interface StoreCart {
 
 export interface CartPlan {
   carts: StoreCart[];
-  /** Lines whose grocery has no linked product. Add these in the store app by hand. */
   unlinked: OrderLine[];
-  /** Lines whose product ID the store would reject. Fix the link in the catalog. */
   invalid: OrderLine[];
 }
 
@@ -28,12 +25,6 @@ function cartQuantity(line: OrderLine): number {
   return Math.max(1, Math.round(line.quantity));
 }
 
-/**
- * Builds one add-to-cart link per store from the weekly order. Lines with a zero
- * quantity are dropped, two lines for the same product are added together, and
- * only IDs the store accepts go into a link, because one bad Walmart ID makes
- * Walmart skip the whole cart.
- */
 export function buildCartPlan(lines: OrderLine[]): CartPlan {
   const unlinked: OrderLine[] = [];
   const invalid: OrderLine[] = [];

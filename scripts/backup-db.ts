@@ -1,4 +1,3 @@
-// Copies the live database to <data>/backups/ with SQLite's online backup, which is safe while the app runs.
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";

@@ -1,6 +1,5 @@
 import { html } from "hono/html";
 
-/** The login page. It's plain HTML so it works before the app's scripts are allowed to load. */
 export function loginPage(opts: { error?: string; needsSetup?: boolean }) {
   return html`<!doctype html>
 <html lang="en">

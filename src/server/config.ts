@@ -1,6 +1,5 @@
 import path from "node:path";
 
-/** Reads settings from the environment. On server1 the systemd unit sets them. */
 export function loadConfig() {
   const dataDir = path.resolve(process.env.PINILLALIST_DATA ?? "data");
   return {

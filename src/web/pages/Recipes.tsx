@@ -162,7 +162,6 @@ type EditRow =
       cookingAmount: string;
       preparation: string;
       optional: boolean;
-      /** "" for none, or a recipe id as text, to match the select. */
       subRecipeId: string;
     };
 

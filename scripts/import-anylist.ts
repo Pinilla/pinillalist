@@ -1,5 +1,3 @@
-// One-time import of the household's AnyList export into an empty database.
-// Usage: npm run import-anylist -- [path to export folder, default ~/anylist-export]
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";

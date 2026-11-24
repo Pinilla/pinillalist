@@ -17,7 +17,6 @@ interface Data {
 
 const DataContext = createContext<Data | null>(null);
 
-/** Loads the household's shared data once and lets screens refresh the parts they change. */
 export function DataProvider({ children }: { children: ReactNode }) {
   const [groceries, setGroceries] = useState<Grocery[]>([]);
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
@@ -46,7 +45,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void reload();
-    // Pick up the other phone's changes when this one comes back to the app.
     const onVisible = () => {
       if (document.visibilityState === "visible") void reload();
     };
