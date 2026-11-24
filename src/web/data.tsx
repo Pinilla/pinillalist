@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Collection, Grocery, GroceryList, RecipeSummary } from "../shared/types.ts";
+import type { Collection, Grocery, GroceryList, Recipe, RecipeSummary } from "../shared/types.ts";
 import { api } from "./api.ts";
 
 interface Data {
@@ -79,4 +79,21 @@ export function useData(): Data {
   const data = useContext(DataContext);
   if (!data) throw new Error("useData needs a DataProvider");
   return data;
+}
+
+export function useRecipe(id: number | null) {
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (id === null) return;
+    let live = true;
+    api
+      .get<Recipe>(`/api/recipes/${id}`)
+      .then((r) => live && setRecipe(r))
+      .catch((err: Error) => live && setError(err.message));
+    return () => {
+      live = false;
+    };
+  }, [id]);
+  return { recipe, error };
 }

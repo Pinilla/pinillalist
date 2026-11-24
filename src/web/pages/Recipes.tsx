@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useReducer, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { filterRecipes } from "../../shared/filters.ts";
-import type { IngredientRow, Recipe } from "../../shared/types.ts";
+import type { IngredientRow, Recipe, RecipeSummary } from "../../shared/types.ts";
 import { api, photoUrl } from "../api.ts";
 import { CollectionChips, Page, Thumb, minutes, toast } from "../components.tsx";
-import { useData } from "../data.tsx";
+import { useData, useRecipe } from "../data.tsx";
+import { blankForm, formFromRecipe, formToBody, updateForm, type FormAction, type FormRow, type IngredientFields, type RecipeForm } from "../recipe-form.ts";
+
+type FormDispatch = (action: FormAction) => void;
 
 export function RecipesPage() {
   const { recipes, collections } = useData();
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<number[]>([]);
-  const shown = filterRecipes(recipes, chosen, query);
   return (
     <Page
       title="Recipes"
@@ -22,47 +24,15 @@ export function RecipesPage() {
     >
       <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
       <CollectionChips collections={collections} chosen={chosen} onChange={setChosen} />
-      {shown.length === 0 ? (
-        <p className="empty">No recipes here.</p>
-      ) : (
-        <div className="grid">
-          {shown.map((r) => (
-            <Link key={r.id} className="tile" href={`/recipes/${r.id}`}>
-              <Thumb photo={r.photo} name={r.name} className="tile-img" />
-              <span className="t">{r.name}</span>
-            </Link>
-          ))}
-        </div>
-      )}
+      <RecipeTiles recipes={filterRecipes(recipes, chosen, query)} />
     </Page>
   );
 }
 
-function useRecipe(id: number) {
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api
-      .get<Recipe>(`/api/recipes/${id}`)
-      .then(setRecipe)
-      .catch((e: Error) => setError(e.message));
-  }, [id]);
-  return { recipe, error };
-}
-
 export function RecipePage({ id }: { id: number }) {
   const { recipe, error } = useRecipe(id);
-  const { collections, groceryById } = useData();
   if (error) return <Page title="Recipe">{error}</Page>;
   if (!recipe) return <main className="wrap empty">Loading…</main>;
-  const cols = collections.filter((c) => recipe.collectionIds.includes(c.id));
-  const facts = [
-    recipe.servings && `Serves ${recipe.servings}`,
-    recipe.prepTime && `Prep ${minutes(recipe.prepTime)}`,
-    recipe.cookTime && `Cook ${minutes(recipe.cookTime)}`,
-    recipe.rating && `${"★".repeat(recipe.rating)}`,
-  ].filter(Boolean);
-
   return (
     <Page
       title={recipe.name}
@@ -80,198 +50,162 @@ export function RecipePage({ id }: { id: number }) {
       <div className="stack recipe-cols">
         <div className="stack">
           {recipe.photo && <img className="hero" src={photoUrl(recipe.photo)!} alt="" />}
-          {cols.length > 0 && (
-            <div className="row">
-              {cols.map((c) => (
-                <span key={c.id} className="badge">
-                  {c.name}
-                </span>
-              ))}
-            </div>
-          )}
-          {facts.length > 0 && <p className="muted">{facts.join(" · ")}</p>}
+          <CollectionBadges recipe={recipe} />
+          <RecipeFacts recipe={recipe} />
           <h2>Ingredients</h2>
           <div className="list">
-            {recipe.ingredients.map((row) =>
-              row.kind === "heading" ? (
-                <div key={row.id} className="li heading">
-                  <span className="label">{row.text}</span>
-                </div>
-              ) : (
-                <div key={row.id} className="li">
-                  <span className="grow">
-                    {row.cookingAmount && <strong>{row.cookingAmount} </strong>}
-                    <Link href={`/catalog/${row.groceryId}`}>{row.groceryName}</Link>
-                    {row.preparation && <span className="muted">, {row.preparation}</span>}
-                    {row.subRecipe && (
-                      <>
-                        <br />
-                        <span className="small">
-                          Made from <Link href={`/recipes/${row.subRecipe.id}`}>{row.subRecipe.name}</Link>
-                        </span>
-                      </>
-                    )}
-                  </span>
-                  {row.optional && <span className="badge">optional</span>}
-                </div>
-              ),
-            )}
+            {recipe.ingredients.map((row) => (
+              <IngredientLine key={row.id} row={row} />
+            ))}
           </div>
         </div>
         <div className="stack">
-          {recipe.steps.length > 0 && (
-            <>
-              <h2>Steps</h2>
-              <ol className="steps-list">
-                {recipe.steps.map((s, i) => (
-                  <li key={i}>{s}</li>
-                ))}
-              </ol>
-            </>
-          )}
-          {recipe.note && (
-            <>
-              <h2>Note</h2>
-              <p style={{ whiteSpace: "pre-wrap" }}>{recipe.note}</p>
-            </>
-          )}
-          {(recipe.sourceName || recipe.sourceUrl) && (
-            <p className="small muted">
-              Source:{" "}
-              {recipe.sourceUrl ? (
-                <a href={/^https?:/.test(recipe.sourceUrl) ? recipe.sourceUrl : `https://${recipe.sourceUrl}`} target="_blank" rel="noopener noreferrer">
-                  {recipe.sourceName || recipe.sourceUrl}
-                </a>
-              ) : (
-                recipe.sourceName
-              )}
-            </p>
-          )}
+          <StepList steps={recipe.steps} />
+          <RecipeNote note={recipe.note} />
+          <SourceLine recipe={recipe} />
         </div>
       </div>
     </Page>
   );
 }
 
-type EditRow =
-  | { key: number; kind: "heading"; text: string }
-  | {
-      key: number;
-      kind: "ingredient";
-      groceryName: string;
-      cookingAmount: string;
-      preparation: string;
-      optional: boolean;
-      subRecipeId: string;
-    };
-
-let nextKey = 1;
-
-function toEditRow(row: IngredientRow): EditRow {
-  return row.kind === "heading"
-    ? { key: nextKey++, kind: "heading", text: row.text }
-    : {
-        key: nextKey++,
-        kind: "ingredient",
-        groceryName: row.groceryName,
-        cookingAmount: row.cookingAmount,
-        preparation: row.preparation,
-        optional: row.optional,
-        subRecipeId: row.subRecipe ? String(row.subRecipe.id) : "",
-      };
+export function RecipeEditPage({ id }: { id: number | null }) {
+  const { recipe, error } = useRecipe(id);
+  if (id === null) return <RecipeEditor id={null} initial={blankForm()} />;
+  if (error) return <Page title="Recipe">{error}</Page>;
+  if (!recipe) return <main className="wrap empty">Loading…</main>;
+  return <RecipeEditor id={id} initial={formFromRecipe(recipe)} />;
 }
 
-const blankIngredient = (): EditRow => ({
-  key: nextKey++,
-  kind: "ingredient",
-  groceryName: "",
-  cookingAmount: "",
-  preparation: "",
-  optional: false,
-  subRecipeId: "",
-});
+function RecipeTiles({ recipes }: { recipes: RecipeSummary[] }) {
+  if (recipes.length === 0) return <p className="empty">No recipes here.</p>;
+  return (
+    <div className="grid">
+      {recipes.map((r) => (
+        <Link key={r.id} className="tile" href={`/recipes/${r.id}`}>
+          <Thumb photo={r.photo} name={r.name} className="tile-img" />
+          <span className="t">{r.name}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
-export function RecipeEditPage({ id }: { id: number | null }) {
+function CollectionBadges({ recipe }: { recipe: Recipe }) {
+  const { collections } = useData();
+  const mine = collections.filter((c) => recipe.collectionIds.includes(c.id));
+  if (mine.length === 0) return null;
+  return (
+    <div className="row">
+      {mine.map((c) => (
+        <span key={c.id} className="badge">
+          {c.name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function RecipeFacts({ recipe }: { recipe: Recipe }) {
+  const facts = recipeFacts(recipe);
+  if (facts.length === 0) return null;
+  return <p className="muted">{facts.join(" · ")}</p>;
+}
+
+function recipeFacts(recipe: Recipe): string[] {
+  return [
+    recipe.servings && `Serves ${recipe.servings}`,
+    recipe.prepTime && `Prep ${minutes(recipe.prepTime)}`,
+    recipe.cookTime && `Cook ${minutes(recipe.cookTime)}`,
+    recipe.rating && "★".repeat(recipe.rating),
+  ].filter((fact): fact is string => Boolean(fact));
+}
+
+function IngredientLine({ row }: { row: IngredientRow }) {
+  if (row.kind === "heading") {
+    return (
+      <div className="li heading">
+        <span className="label">{row.text}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="li">
+      <span className="grow">
+        {row.cookingAmount && <strong>{row.cookingAmount} </strong>}
+        <Link href={`/catalog/${row.groceryId}`}>{row.groceryName}</Link>
+        {row.preparation && <span className="muted">, {row.preparation}</span>}
+        {row.subRecipe && (
+          <>
+            <br />
+            <span className="small">
+              Made from <Link href={`/recipes/${row.subRecipe.id}`}>{row.subRecipe.name}</Link>
+            </span>
+          </>
+        )}
+      </span>
+      {row.optional && <span className="badge">optional</span>}
+    </div>
+  );
+}
+
+function StepList({ steps }: { steps: string[] }) {
+  if (steps.length === 0) return null;
+  return (
+    <>
+      <h2>Steps</h2>
+      <ol className="steps-list">
+        {steps.map((s, i) => (
+          <li key={i}>{s}</li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+function RecipeNote({ note }: { note: string }) {
+  if (!note) return null;
+  return (
+    <>
+      <h2>Note</h2>
+      <p style={{ whiteSpace: "pre-wrap" }}>{note}</p>
+    </>
+  );
+}
+
+function SourceLine({ recipe }: { recipe: Recipe }) {
+  const { sourceName, sourceUrl } = recipe;
+  if (!sourceName && !sourceUrl) return null;
+  return (
+    <p className="small muted">
+      Source:{" "}
+      {sourceUrl ? (
+        <a href={absoluteUrl(sourceUrl)} target="_blank" rel="noopener noreferrer">
+          {sourceName || sourceUrl}
+        </a>
+      ) : (
+        sourceName
+      )}
+    </p>
+  );
+}
+
+function absoluteUrl(url: string): string {
+  return /^https?:/.test(url) ? url : `https://${url}`;
+}
+
+function RecipeEditor({ id, initial }: { id: number | null; initial: RecipeForm }) {
   const [, navigate] = useLocation();
-  const { collections, groceries, recipes: allRecipes, reload } = useData();
-  const [loading, setLoading] = useState(id !== null);
-  const [name, setName] = useState("");
-  const [servings, setServings] = useState("");
-  const [prep, setPrep] = useState("");
-  const [cook, setCook] = useState("");
-  const [steps, setSteps] = useState("");
-  const [note, setNote] = useState("");
-  const [sourceName, setSourceName] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [rating, setRating] = useState<number | null>(null);
-  const [collectionIds, setCollectionIds] = useState<number[]>([]);
-  const [rows, setRows] = useState<EditRow[]>([blankIngredient()]);
+  const { reload } = useData();
+  const [form, dispatch] = useReducer(updateForm, initial);
   const [photo, setPhoto] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (id === null) return;
-    api.get<Recipe>(`/api/recipes/${id}`).then((r) => {
-      setName(r.name);
-      setServings(r.servings);
-      setPrep(r.prepTime ? String(Math.round(r.prepTime / 60)) : "");
-      setCook(r.cookTime ? String(Math.round(r.cookTime / 60)) : "");
-      setSteps(r.steps.join("\n\n"));
-      setNote(r.note);
-      setSourceName(r.sourceName);
-      setSourceUrl(r.sourceUrl);
-      setRating(r.rating);
-      setCollectionIds(r.collectionIds);
-      setRows(r.ingredients.length ? r.ingredients.map(toEditRow) : [blankIngredient()]);
-      setLoading(false);
-    });
-  }, [id]);
-
-  const update = (key: number, patch: Partial<EditRow>) =>
-    setRows((rs) => rs.map((r) => (r.key === key ? ({ ...r, ...patch } as EditRow) : r)));
-  const move = (index: number, by: number) =>
-    setRows((rs) => {
-      const next = [...rs];
-      const [row] = next.splice(index, 1);
-      next.splice(Math.max(0, Math.min(next.length, index + by)), 0, row!);
-      return next;
-    });
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const mins = (v: string) => (v.trim() && Number(v) > 0 ? Math.round(Number(v) * 60) : null);
-    const body = {
-      name,
-      servings,
-      prepTime: mins(prep),
-      cookTime: mins(cook),
-      steps: steps.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean),
-      note,
-      sourceName,
-      sourceUrl,
-      rating,
-      collectionIds,
-      ingredients: rows.map((r) =>
-        r.kind === "heading"
-          ? { kind: "heading", text: r.text }
-          : {
-              kind: "ingredient",
-              groceryName: r.groceryName,
-              cookingAmount: r.cookingAmount,
-              preparation: r.preparation,
-              optional: r.optional,
-              subRecipeId: r.subRecipeId ? Number(r.subRecipeId) : null,
-            },
-      ),
-    };
     try {
-      let saved = id === null ? await api.post<Recipe>("/api/recipes", body) : await api.put<Recipe>(`/api/recipes/${id}`, body);
-      if (photo) {
-        const form = new FormData();
-        form.set("photo", photo);
-        saved = await api.put<Recipe>(`/api/recipes/${saved.id}/photo`, form);
-      }
+      const saved = await saveRecipe(id, form, photo);
       await reload(["recipes", "groceries"]);
       navigate(`/recipes/${saved.id}`);
     } catch (err) {
@@ -279,15 +213,6 @@ export function RecipeEditPage({ id }: { id: number | null }) {
       setSaving(false);
     }
   };
-
-  const remove = async () => {
-    if (id === null || !confirm(`Delete ${name}? This can't be undone.`)) return;
-    await api.del(`/api/recipes/${id}`);
-    await reload(["recipes"]);
-    navigate("/recipes");
-  };
-
-  if (loading) return <main className="wrap empty">Loading…</main>;
 
   return (
     <Page
@@ -302,165 +227,241 @@ export function RecipeEditPage({ id }: { id: number | null }) {
       <form className="stack" onSubmit={save}>
         <label className="field">
           <span>Name</span>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+          <input type="text" value={form.name} onChange={(e) => dispatch({ type: "setText", field: "name", value: e.target.value })} required />
         </label>
-        <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
-          <span>Collections</span>
-          <div className="row">
-            {collections.map((c) => {
-              const on = collectionIds.includes(c.id);
-              return (
-                <button
-                  type="button"
-                  key={c.id}
-                  className={`chip${on ? " on" : ""}`}
-                  aria-pressed={on}
-                  onClick={() => setCollectionIds((ids) => (on ? ids.filter((x) => x !== c.id) : [...ids, c.id]))}
-                >
-                  {c.name}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-        <div className="two">
-          <label className="field">
-            <span>Prep minutes</span>
-            <input type="number" inputMode="numeric" min="0" value={prep} onChange={(e) => setPrep(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Cook minutes</span>
-            <input type="number" inputMode="numeric" min="0" value={cook} onChange={(e) => setCook(e.target.value)} />
-          </label>
-        </div>
-        <div className="two">
-          <label className="field">
-            <span>Servings</span>
-            <input type="text" value={servings} onChange={(e) => setServings(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Rating</span>
-            <select value={rating ?? ""} onChange={(e) => setRating(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">None</option>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {"★".repeat(n)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <CollectionPicker chosen={form.collectionIds} dispatch={dispatch} />
+        <TimeAndServingFields form={form} dispatch={dispatch} />
         <label className="field">
           <span>Photo</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
         </label>
-
-        <h2>Ingredients</h2>
-        <datalist id="grocery-names">
-          {groceries.map((g) => (
-            <option key={g.id} value={g.name} />
-          ))}
-        </datalist>
-        <div className="list">
-          {rows.map((row, i) => (
-            <div key={row.key} className="ing-row">
-              {row.kind === "heading" ? (
-                <label className="field full heading-field">
-                  <span>Section heading</span>
-                  <input type="text" value={row.text} onChange={(e) => update(row.key, { text: e.target.value })} placeholder="For the sauce" />
-                </label>
-              ) : (
-                <>
-                  <label className="field full">
-                    <span>Grocery</span>
-                    <input
-                      type="text"
-                      list="grocery-names"
-                      value={row.groceryName}
-                      onChange={(e) => update(row.key, { groceryName: e.target.value })}
-                      placeholder="Onion"
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Cooking amount</span>
-                    <input type="text" value={row.cookingAmount} onChange={(e) => update(row.key, { cookingAmount: e.target.value })} placeholder="1 cup" />
-                  </label>
-                  <label className="field">
-                    <span>Preparation</span>
-                    <input type="text" value={row.preparation} onChange={(e) => update(row.key, { preparation: e.target.value })} placeholder="diced" />
-                  </label>
-                  <div className="row full extras">
-                    <label className="check-inline">
-                      <input type="checkbox" checked={row.optional} onChange={(e) => update(row.key, { optional: e.target.checked })} />
-                      Optional
-                    </label>
-                    <label className="field grow">
-                      <span>Made from recipe</span>
-                      <select value={row.subRecipeId} onChange={(e) => update(row.key, { subRecipeId: e.target.value })}>
-                        <option value="">None, it's bought</option>
-                        {allRecipes
-                          .filter((r) => r.id !== id)
-                          .map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.name}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  </div>
-                </>
-              )}
-              <div className="row full">
-                <button type="button" className="btn plain small" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
-                  ↑ Up
-                </button>
-                <button type="button" className="btn plain small" disabled={i === rows.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
-                  ↓ Down
-                </button>
-                <span className="grow" />
-                <button type="button" className="btn plain small warn-text" onClick={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}>
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="row">
-          <button type="button" className="btn ghost small" onClick={() => setRows((rs) => [...rs, blankIngredient()])}>
-            Add ingredient
-          </button>
-          <button type="button" className="btn ghost small" onClick={() => setRows((rs) => [...rs, { key: nextKey++, kind: "heading", text: "" }])}>
-            Add heading
-          </button>
-        </div>
-
-        <label className="field">
-          <span>Steps</span>
-          <textarea value={steps} onChange={(e) => setSteps(e.target.value)} placeholder="Leave a blank line between steps." />
-        </label>
-        <label className="field">
-          <span>Note</span>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} style={{ minHeight: 80 }} />
-        </label>
-        <div className="two">
-          <label className="field">
-            <span>Source name</span>
-            <input type="text" value={sourceName} onChange={(e) => setSourceName(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Source link</span>
-            <input type="text" inputMode="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
-          </label>
-        </div>
+        <IngredientEditor recipeId={id} rows={form.rows} dispatch={dispatch} />
+        <NotesFields form={form} dispatch={dispatch} />
         <button className="btn big" disabled={saving}>
           {saving ? "Saving…" : "Save recipe"}
         </button>
-        {id !== null && (
-          <button type="button" className="btn danger" onClick={remove}>
-            Delete recipe
-          </button>
-        )}
+        {id !== null && <DeleteRecipeButton id={id} name={form.name} />}
       </form>
     </Page>
+  );
+}
+
+async function saveRecipe(id: number | null, form: RecipeForm, photo: File | null): Promise<Recipe> {
+  const body = formToBody(form);
+  const saved = id === null ? await api.post<Recipe>("/api/recipes", body) : await api.put<Recipe>(`/api/recipes/${id}`, body);
+  if (!photo) return saved;
+  const upload = new FormData();
+  upload.set("photo", photo);
+  return api.put<Recipe>(`/api/recipes/${saved.id}/photo`, upload);
+}
+
+function CollectionPicker({ chosen, dispatch }: { chosen: number[]; dispatch: FormDispatch }) {
+  const { collections } = useData();
+  return (
+    <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+      <span>Collections</span>
+      <div className="row">
+        {collections.map((c) => {
+          const on = chosen.includes(c.id);
+          return (
+            <button type="button" key={c.id} className={`chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => dispatch({ type: "toggleCollection", collectionId: c.id })}>
+              {c.name}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function TimeAndServingFields({ form, dispatch }: { form: RecipeForm; dispatch: FormDispatch }) {
+  const setText = (field: "prepMinutes" | "cookMinutes" | "servings") => (e: React.ChangeEvent<HTMLInputElement>) =>
+    dispatch({ type: "setText", field, value: e.target.value });
+  return (
+    <>
+      <div className="two">
+        <label className="field">
+          <span>Prep minutes</span>
+          <input type="number" inputMode="numeric" min="0" value={form.prepMinutes} onChange={setText("prepMinutes")} />
+        </label>
+        <label className="field">
+          <span>Cook minutes</span>
+          <input type="number" inputMode="numeric" min="0" value={form.cookMinutes} onChange={setText("cookMinutes")} />
+        </label>
+      </div>
+      <div className="two">
+        <label className="field">
+          <span>Servings</span>
+          <input type="text" value={form.servings} onChange={setText("servings")} />
+        </label>
+        <label className="field">
+          <span>Rating</span>
+          <select value={form.rating ?? ""} onChange={(e) => dispatch({ type: "setRating", rating: e.target.value ? Number(e.target.value) : null })}>
+            <option value="">None</option>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>
+                {"★".repeat(n)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </>
+  );
+}
+
+function IngredientEditor({ recipeId, rows, dispatch }: { recipeId: number | null; rows: FormRow[]; dispatch: FormDispatch }) {
+  const { groceries } = useData();
+  return (
+    <>
+      <h2>Ingredients</h2>
+      <datalist id="grocery-names">
+        {groceries.map((g) => (
+          <option key={g.id} value={g.name} />
+        ))}
+      </datalist>
+      <div className="list">
+        {rows.map((row, i) => (
+          <div key={row.key} className="ing-row">
+            {row.kind === "heading" ? (
+              <HeadingFields text={row.text} onChange={(text) => dispatch({ type: "editHeading", key: row.key, text })} />
+            ) : (
+              <IngredientFieldset row={row} recipeId={recipeId} onChange={(fields) => dispatch({ type: "editIngredient", key: row.key, fields })} />
+            )}
+            <RowControls index={i} count={rows.length} onMove={(by) => dispatch({ type: "moveRow", index: i, by })} onRemove={() => dispatch({ type: "removeRow", key: row.key })} />
+          </div>
+        ))}
+      </div>
+      <div className="row">
+        <button type="button" className="btn ghost small" onClick={() => dispatch({ type: "addIngredient" })}>
+          Add ingredient
+        </button>
+        <button type="button" className="btn ghost small" onClick={() => dispatch({ type: "addHeading" })}>
+          Add heading
+        </button>
+      </div>
+    </>
+  );
+}
+
+function HeadingFields({ text, onChange }: { text: string; onChange: (text: string) => void }) {
+  return (
+    <label className="field full heading-field">
+      <span>Section heading</span>
+      <input type="text" value={text} onChange={(e) => onChange(e.target.value)} placeholder="For the sauce" />
+    </label>
+  );
+}
+
+function IngredientFieldset({
+  row,
+  recipeId,
+  onChange,
+}: {
+  row: Extract<FormRow, { kind: "ingredient" }>;
+  recipeId: number | null;
+  onChange: (fields: IngredientFields) => void;
+}) {
+  return (
+    <>
+      <label className="field full">
+        <span>Grocery</span>
+        <input type="text" list="grocery-names" value={row.groceryName} onChange={(e) => onChange({ groceryName: e.target.value })} placeholder="Onion" />
+      </label>
+      <label className="field">
+        <span>Cooking amount</span>
+        <input type="text" value={row.cookingAmount} onChange={(e) => onChange({ cookingAmount: e.target.value })} placeholder="1 cup" />
+      </label>
+      <label className="field">
+        <span>Preparation</span>
+        <input type="text" value={row.preparation} onChange={(e) => onChange({ preparation: e.target.value })} placeholder="diced" />
+      </label>
+      <div className="row full extras">
+        <label className="check-inline">
+          <input type="checkbox" checked={row.optional} onChange={(e) => onChange({ optional: e.target.checked })} />
+          Optional
+        </label>
+        <SubRecipeSelect value={row.subRecipeId} excludeId={recipeId} onChange={(subRecipeId) => onChange({ subRecipeId })} />
+      </div>
+    </>
+  );
+}
+
+function SubRecipeSelect({ value, excludeId, onChange }: { value: string; excludeId: number | null; onChange: (value: string) => void }) {
+  const { recipes } = useData();
+  return (
+    <label className="field grow">
+      <span>Made from recipe</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">None, it's bought</option>
+        {recipes
+          .filter((r) => r.id !== excludeId)
+          .map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+      </select>
+    </label>
+  );
+}
+
+function RowControls({ index, count, onMove, onRemove }: { index: number; count: number; onMove: (by: number) => void; onRemove: () => void }) {
+  return (
+    <div className="row full">
+      <button type="button" className="btn plain small" disabled={index === 0} onClick={() => onMove(-1)} aria-label="Move up">
+        ↑ Up
+      </button>
+      <button type="button" className="btn plain small" disabled={index === count - 1} onClick={() => onMove(1)} aria-label="Move down">
+        ↓ Down
+      </button>
+      <span className="grow" />
+      <button type="button" className="btn plain small warn-text" onClick={onRemove}>
+        Remove
+      </button>
+    </div>
+  );
+}
+
+function NotesFields({ form, dispatch }: { form: RecipeForm; dispatch: FormDispatch }) {
+  const setText = (field: "steps" | "note" | "sourceName" | "sourceUrl") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    dispatch({ type: "setText", field, value: e.target.value });
+  return (
+    <>
+      <label className="field">
+        <span>Steps</span>
+        <textarea value={form.steps} onChange={setText("steps")} placeholder="Leave a blank line between steps." />
+      </label>
+      <label className="field">
+        <span>Note</span>
+        <textarea value={form.note} onChange={setText("note")} style={{ minHeight: 80 }} />
+      </label>
+      <div className="two">
+        <label className="field">
+          <span>Source name</span>
+          <input type="text" value={form.sourceName} onChange={setText("sourceName")} />
+        </label>
+        <label className="field">
+          <span>Source link</span>
+          <input type="text" inputMode="url" value={form.sourceUrl} onChange={setText("sourceUrl")} />
+        </label>
+      </div>
+    </>
+  );
+}
+
+function DeleteRecipeButton({ id, name }: { id: number; name: string }) {
+  const [, navigate] = useLocation();
+  const { reload } = useData();
+  const remove = async () => {
+    if (!confirm(`Delete ${name}? This can't be undone.`)) return;
+    await api.del(`/api/recipes/${id}`);
+    await reload(["recipes"]);
+    navigate("/recipes");
+  };
+  return (
+    <button type="button" className="btn danger" onClick={remove}>
+      Delete recipe
+    </button>
   );
 }

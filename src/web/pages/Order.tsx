@@ -19,7 +19,7 @@ import type { CheckItem } from "../../shared/stock.ts";
 import { STORE_NAMES, type Grocery, type IngredientRow, type ListItem, type Product, type Recipe, type RecipeSummary } from "../../shared/types.ts";
 import { api } from "../api.ts";
 import { CollectionChips, Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
-import { useData } from "../data.tsx";
+import { useData, useRecipe } from "../data.tsx";
 
 const STORAGE_KEY = "pinillalist.order";
 
@@ -315,7 +315,7 @@ function ExtrasSheet({
   onUnpick?: () => void;
   onClose: () => void;
 }) {
-  const recipe = useRecipe(summary.id);
+  const recipe = useRecipeOrToast(summary.id);
   const [optional, setOptional] = useState<number[]>(choice?.optional ?? []);
   const [modes, setModes] = useState<Record<string, SubRecipeMode>>(choice?.subRecipes ?? {});
   useEscapeKey(onClose);
@@ -351,18 +351,11 @@ function ExtrasSheet({
   );
 }
 
-function useRecipe(id: number): Recipe | null {
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+function useRecipeOrToast(id: number): Recipe | null {
+  const { recipe, error } = useRecipe(id);
   useEffect(() => {
-    let live = true;
-    api
-      .get<Recipe>(`/api/recipes/${id}`)
-      .then((r) => live && setRecipe(r))
-      .catch((err: Error) => toast(err.message));
-    return () => {
-      live = false;
-    };
-  }, [id]);
+    if (error) toast(error);
+  }, [error]);
   return recipe;
 }
 
