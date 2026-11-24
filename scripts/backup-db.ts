@@ -12,6 +12,11 @@ const target = path.join(dir, `pinillalist-${stamp}.db`);
 const db = new Database(config.dbFile, { fileMustExist: true });
 await db.backup(target);
 db.close();
-const old = readdirSync(dir).filter((f) => f.endsWith(".db")).sort().slice(0, -KEEP);
-for (const f of old) rmSync(path.join(dir, f));
+const old = readdirSync(dir)
+  .filter((f) => f.endsWith(".db"))
+  .sort()
+  .slice(0, -KEEP);
+for (const f of old) {
+  rmSync(path.join(dir, f));
+}
 console.log(`Backed up to ${target}`);

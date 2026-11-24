@@ -12,7 +12,10 @@ migrateDb(db);
 
 const data = JSON.parse(readFileSync(path.join(exportDir, "user-data.json"), "utf8"));
 try {
-  const r = importAnyList(db, data, { photosFrom: path.join(exportDir, "photos"), photosTo: config.photosDir });
+  const r = importAnyList(db, data, {
+    photosFrom: path.join(exportDir, "photos"),
+    photosTo: config.photosDir,
+  });
   console.log(`Imported into ${config.dbFile}:
   ${r.recipes} recipes in ${r.collections} collections, ${r.photos} with photos
   ${r.ingredients} ingredients
@@ -20,7 +23,9 @@ try {
   ${r.essentials} items on the Essentials list
   ${r.suggestions} possible duplicates to review under Catalog
   Skipped lists: ${r.skippedLists.join(", ") || "none"}`);
-  if (r.missingPhotos.length) console.log(`  Photos missing for: ${r.missingPhotos.join(", ")}`);
+  if (r.missingPhotos.length) {
+    console.log(`  Photos missing for: ${r.missingPhotos.join(", ")}`);
+  }
 } catch (err) {
   console.error((err as Error).message);
   process.exit(1);

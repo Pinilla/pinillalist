@@ -11,11 +11,15 @@ async function login(page: Page) {
 
 async function savedRecipe(page: Page, id: string) {
   const recipe = await (await page.request.get(`/api/recipes/${id}`)).json();
-  const ingredients = recipe.ingredients.map(({ id: _id, groceryId: _groceryId, ...rest }: Record<string, unknown>) => rest);
+  const ingredients = recipe.ingredients.map(
+    ({ id: _id, groceryId: _groceryId, ...rest }: Record<string, unknown>) => rest,
+  );
   return { ...recipe, ingredients };
 }
 
-test("a recipe made in the editor shows on its page and saves again unchanged", async ({ page }) => {
+test("a recipe made in the editor shows on its page and saves again unchanged", async ({
+  page,
+}) => {
   await login(page);
   await page.goto("/recipes/new");
 

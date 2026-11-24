@@ -18,7 +18,9 @@ describe("buildCartPlan", () => {
   it("builds a Walmart link with item IDs and quantities", () => {
     const plan = buildCartPlan([line(walmart("10450114"), 2), line(walmart("51259212"))]);
     expect(plan.carts).toHaveLength(1);
-    expect(plan.carts[0]!.url).toBe("https://www.walmart.com/sc/cart/addToCart?items=10450114_2,51259212_1");
+    expect(plan.carts[0]!.url).toBe(
+      "https://www.walmart.com/sc/cart/addToCart?items=10450114_2,51259212_1",
+    );
   });
 
   it("builds an Amazon link with numbered ASINs and no Associate tag", () => {
@@ -61,7 +63,12 @@ describe("buildCartPlan", () => {
   });
 
   it("rounds packages to whole numbers but keeps pounds for deli products", () => {
-    const plan = buildCartPlan([line(walmart("10450114"), 1.4), line(walmart("22222222", "pound"), 1.5)]);
-    expect(plan.carts[0]!.url).toBe("https://www.walmart.com/sc/cart/addToCart?items=10450114_1,22222222_1.5");
+    const plan = buildCartPlan([
+      line(walmart("10450114"), 1.4),
+      line(walmart("22222222", "pound"), 1.5),
+    ]);
+    expect(plan.carts[0]!.url).toBe(
+      "https://www.walmart.com/sc/cart/addToCart?items=10450114_1,22222222_1.5",
+    );
   });
 });

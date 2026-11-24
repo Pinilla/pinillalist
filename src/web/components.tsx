@@ -21,7 +21,12 @@ export function Stepper({
 }) {
   return (
     <span className={`stepper ${className}`.trim()} role="group" aria-label={label}>
-      <button type="button" aria-label="Less" disabled={value - step < min} onClick={() => onChange(round(Math.max(min, value - step)))}>
+      <button
+        type="button"
+        aria-label="Less"
+        disabled={value - step < min}
+        onClick={() => onChange(round(Math.max(min, value - step)))}
+      >
         −
       </button>
       <output aria-live="polite">{formatNumber(value)}</output>
@@ -47,13 +52,22 @@ export function CollectionChips({
 }) {
   return (
     <div className="chips" role="group" aria-label="Collections">
-      <button className={`chip${chosen.length === 0 ? " on" : ""}`} aria-pressed={chosen.length === 0} onClick={() => onChange([])}>
+      <button
+        className={`chip${chosen.length === 0 ? " on" : ""}`}
+        aria-pressed={chosen.length === 0}
+        onClick={() => onChange([])}
+      >
         All
       </button>
       {collections.map((c) => {
         const on = chosen.includes(c.id);
         return (
-          <button key={c.id} className={`chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => onChange(toggleCollection(chosen, c.id))}>
+          <button
+            key={c.id}
+            className={`chip${on ? " on" : ""}`}
+            aria-pressed={on}
+            onClick={() => onChange(toggleCollection(chosen, c.id))}
+          >
             {c.name}
           </button>
         );
@@ -63,12 +77,16 @@ export function CollectionChips({
 }
 
 export function StoreBadge({ product }: { product: Product | null }) {
-  if (!product) return <span className="store none">No product</span>;
+  if (!product) {
+    return <span className="store none">No product</span>;
+  }
   return <span className={`store ${product.store}`}>{STORE_NAMES[product.store]}</span>;
 }
 
 export function productLabel(product: Product): string {
-  return [product.name || `${STORE_NAMES[product.store]} ${product.storeId}`, product.size].filter(Boolean).join(", ");
+  return [product.name || `${STORE_NAMES[product.store]} ${product.storeId}`, product.size]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function productUrl(product: Product): string {
@@ -77,9 +95,19 @@ export function productUrl(product: Product): string {
     : `https://www.amazon.com/dp/${product.storeId}`;
 }
 
-export function Thumb({ photo, name, className = "thumb" }: { photo: string | null; name: string; className?: string }) {
+export function Thumb({
+  photo,
+  name,
+  className = "thumb",
+}: {
+  photo: string | null;
+  name: string;
+  className?: string;
+}) {
   const src = photoUrl(photo);
-  if (src) return <img className={className} src={src} alt="" loading="lazy" />;
+  if (src) {
+    return <img className={className} src={src} alt="" loading="lazy" />;
+  }
   return (
     <span className={className === "thumb" ? "thumb" : "ph"} aria-hidden="true">
       {name.charAt(0).toUpperCase()}
@@ -124,7 +152,15 @@ export function useDesktop(): boolean {
   );
 }
 
-export function Panel({ title, actions, children }: { title: ReactNode; actions?: ReactNode; children: ReactNode }) {
+export function Panel({
+  title,
+  actions,
+  children,
+}: {
+  title: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="panel stack">
       <div className="row between nowrap">
@@ -162,7 +198,9 @@ export function Page({
 }
 
 export function minutes(seconds: number | null): string {
-  if (!seconds) return "";
+  if (!seconds) {
+    return "";
+  }
   const m = Math.round(seconds / 60);
   return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ""}`.trim() : `${m} min`;
 }

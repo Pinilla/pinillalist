@@ -18,9 +18,22 @@ setPassword(db, PASSWORD);
 
 const dinner = repo.createCollection(db, "Easy Dinner");
 repo.createCollection(db, "Desserts");
-const ing = (groceryName: string, cookingAmount: string, preparation = "", extra: { optional?: boolean; subRecipeId?: number } = {}) =>
-  ({ kind: "ingredient", groceryName, cookingAmount, preparation, ...extra }) as const;
-const base = { servings: "", prepTime: null, cookTime: null, steps: [], note: "", sourceName: "", sourceUrl: "", rating: null };
+const ing = (
+  groceryName: string,
+  cookingAmount: string,
+  preparation = "",
+  extra: { optional?: boolean; subRecipeId?: number } = {},
+) => ({ kind: "ingredient", groceryName, cookingAmount, preparation, ...extra }) as const;
+const base = {
+  servings: "",
+  prepTime: null,
+  cookTime: null,
+  steps: [],
+  note: "",
+  sourceName: "",
+  sourceUrl: "",
+  rating: null,
+};
 
 repo.createRecipe(db, {
   ...base,
@@ -36,8 +49,18 @@ repo.createRecipe(db, {
   ingredients: [ing("Onion", "1"), ing("Tortillas", "8")],
 });
 const desserts = repo.listCollections(db).find((c) => c.name === "Desserts")!;
-repo.createRecipe(db, { ...base, name: "Cookies", collectionIds: [desserts.id], ingredients: [ing("Flour", "2 cups")] });
-const salsa = repo.createRecipe(db, { ...base, name: "Salsa verde", collectionIds: [], ingredients: [ing("Tomatillos", "1 lb"), ing("Lime", "1", "juiced")] });
+repo.createRecipe(db, {
+  ...base,
+  name: "Cookies",
+  collectionIds: [desserts.id],
+  ingredients: [ing("Flour", "2 cups")],
+});
+const salsa = repo.createRecipe(db, {
+  ...base,
+  name: "Salsa verde",
+  collectionIds: [],
+  ingredients: [ing("Tomatillos", "1 lb"), ing("Lime", "1", "juiced")],
+});
 repo.createRecipe(db, {
   ...base,
   name: "Pozole",
@@ -50,12 +73,24 @@ repo.createRecipe(db, {
   ],
 });
 
-const product = (store: Product["store"], storeId: string, name: string, soldBy: Product["soldBy"] = "each"): Product => ({
-  store, storeId, name, size: "", imageUrl: "", soldBy,
+const product = (
+  store: Product["store"],
+  storeId: string,
+  name: string,
+  soldBy: Product["soldBy"] = "each",
+): Product => ({
+  store,
+  storeId,
+  name,
+  size: "",
+  imageUrl: "",
+  soldBy,
 });
 const link = (name: string, p: Product, unit = "") => {
   const { grocery } = repo.findOrCreateGrocery(db, name, unit);
-  if (unit) repo.updateGrocery(db, grocery.id, { unit });
+  if (unit) {
+    repo.updateGrocery(db, grocery.id, { unit });
+  }
   repo.setProduct(db, grocery.id, p);
 };
 const keep = (name: string, location: LocationKey) => {
@@ -67,7 +102,10 @@ link("Ground beef", product("walmart", "10450114", "Ground beef 80/20"), "lb");
 link("Tortillas", product("amazon", "B07XJ8C8F5", "Flour tortillas"), "pack");
 
 const essentials = repo.createList(db, "Weekly Essentials", "essentials");
-repo.addListItem(db, essentials.id, { groceryName: "Toilet paper", details: "Extra roll in the closet" });
+repo.addListItem(db, essentials.id, {
+  groceryName: "Toilet paper",
+  details: "Extra roll in the closet",
+});
 repo.addListItem(db, essentials.id, { groceryName: "Deli American cheese" });
 link("Toilet paper", product("amazon", "B000000001", "Toilet paper 24 rolls"));
 link("Deli American cheese", product("walmart", "22222222", "Deli American cheese", "pound"));
@@ -81,4 +119,6 @@ keep("Deli American cheese", "fridge");
 
 const app = createApp({ db, photosDir: path.join(dir, "photos"), distDir: path.resolve("dist") });
 const port = Number(process.env.PORT ?? 3199);
-serve({ fetch: app.fetch, port, hostname: "127.0.0.1" }, () => console.log(`e2e server on ${port}, data in ${dir}`));
+serve({ fetch: app.fetch, port, hostname: "127.0.0.1" }, () =>
+  console.log(`e2e server on ${port}, data in ${dir}`),
+);

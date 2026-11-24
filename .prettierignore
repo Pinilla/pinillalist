@@ -1,0 +1,7 @@
+dist/
+drizzle/
+test-results/
+playwright-report/
+data/
+package-lock.json
+*.md

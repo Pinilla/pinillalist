@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+  type AnySQLiteColumn,
+} from "drizzle-orm/sqlite-core";
 
 export const groceries = sqliteTable(
   "groceries",
@@ -22,7 +31,9 @@ export const products = sqliteTable("products", {
   name: text().notNull().default(""),
   size: text().notNull().default(""),
   imageUrl: text("image_url").notNull().default(""),
-  soldBy: text("sold_by", { enum: ["each", "pound"] }).notNull().default("each"),
+  soldBy: text("sold_by", { enum: ["each", "pound"] })
+    .notNull()
+    .default("each"),
 });
 
 export const recipes = sqliteTable("recipes", {
@@ -31,13 +42,18 @@ export const recipes = sqliteTable("recipes", {
   servings: text().notNull().default(""),
   prepTime: integer("prep_time"),
   cookTime: integer("cook_time"),
-  steps: text({ mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
+  steps: text({ mode: "json" })
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'`),
   note: text().notNull().default(""),
   sourceName: text("source_name").notNull().default(""),
   sourceUrl: text("source_url").notNull().default(""),
   rating: integer(),
   photo: text(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });
 
 export const collections = sqliteTable("collections", {
@@ -73,7 +89,9 @@ export const ingredients = sqliteTable(
     cookingAmount: text("cooking_amount").notNull().default(""),
     preparation: text().notNull().default(""),
     optional: integer({ mode: "boolean" }).notNull().default(false),
-    subRecipeId: integer("sub_recipe_id").references((): AnySQLiteColumn => recipes.id, { onDelete: "set null" }),
+    subRecipeId: integer("sub_recipe_id").references((): AnySQLiteColumn => recipes.id, {
+      onDelete: "set null",
+    }),
     raw: text().notNull().default(""),
   },
   (t) => [index("ingredients_recipe").on(t.recipeId), index("ingredients_grocery").on(t.groceryId)],
@@ -112,7 +130,9 @@ export const mergeSuggestions = sqliteTable("merge_suggestions", {
   groceryB: integer("grocery_b")
     .notNull()
     .references(() => groceries.id, { onDelete: "cascade" }),
-  status: text({ enum: ["pending", "kept"] }).notNull().default("pending"),
+  status: text({ enum: ["pending", "kept"] })
+    .notNull()
+    .default("pending"),
 });
 
 export const settings = sqliteTable("settings", {

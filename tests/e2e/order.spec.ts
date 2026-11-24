@@ -72,7 +72,9 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
 
   await expect(card.locator(".item-name")).toHaveText("Deli American cheese");
   await expect(status).toHaveText("0");
-  for (let i = 0; i < 4; i++) await quantity.getByRole("button", { name: "More" }).click();
+  for (let i = 0; i < 4; i++) {
+    await quantity.getByRole("button", { name: "More" }).click();
+  }
   await expect(status).toHaveText("1");
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
@@ -105,13 +107,19 @@ test("a full weekly order builds the right Walmart and Amazon cart links", async
     "href",
     "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,10450114_1,22222222_1",
   );
-  await expect(amazon).toHaveAttribute("href", "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07XJ8C8F5&Quantity.1=2");
+  await expect(amazon).toHaveAttribute(
+    "href",
+    "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07XJ8C8F5&Quantity.1=2",
+  );
   const byHand = page.locator("section", { hasText: "Add these by hand" });
   await expect(byHand).toContainText("Cumin");
   await expect(byHand).toContainText("Bananas");
 
   await page.getByRole("button", { name: "Remove Ground beef" }).click();
-  await expect(walmart).toHaveAttribute("href", "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,22222222_1");
+  await expect(walmart).toHaveAttribute(
+    "href",
+    "https://www.walmart.com/sc/cart/addToCart?items=51259212_1,22222222_1",
+  );
   await page.getByRole("button", { name: "Put back" }).click();
   await expect(walmart).toHaveAttribute("href", /10450114_1/);
 
@@ -135,11 +143,15 @@ test("closing the app resumes the order where it left off", async ({ page }) => 
   await expect(page.locator(".card .item-name")).toHaveText("Flour");
 });
 
-test("picking a recipe asks about its optional ingredients and the recipes it's made from", async ({ page }) => {
+test("picking a recipe asks about its optional ingredients and the recipes it's made from", async ({
+  page,
+}) => {
   await login(page);
   await page.getByRole("button", { name: "Pozole", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Pozole" });
-  await expect(sheet.getByRole("group", { name: /Salsa verde/ }).getByRole("button", { name: "Make it" })).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    sheet.getByRole("group", { name: /Salsa verde/ }).getByRole("button", { name: "Make it" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(sheet.getByRole("checkbox")).toHaveCount(2);
   await sheet.getByLabel("Radishes, sliced").check();
   await sheet.getByRole("button", { name: "Add to this week" }).click();
@@ -198,11 +210,17 @@ test("collection chips combine, so two chips show recipes from either", async ({
 
   await chips.getByRole("button", { name: "Easy Dinner" }).click();
   await expect(tiles).toHaveText(["Cookies"]);
-  await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute("aria-pressed", "true");
+  await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   await chips.getByRole("button", { name: "All" }).click();
   await expect(tiles).toHaveCount(5);
-  await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute("aria-pressed", "false");
+  await expect(chips.getByRole("button", { name: "Desserts" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
 
   await page.getByRole("link", { name: "Order" }).click();
   await chips.getByRole("button", { name: "Easy Dinner" }).click();
@@ -228,7 +246,9 @@ test("pasting a product link in the catalog links the grocery", async ({ page })
   await page.getByRole("link", { name: "Catalog" }).click();
   await page.getByLabel("Search groceries").fill("Flour");
   await page.getByRole("link", { name: /Flour/ }).click();
-  await page.getByLabel(/product link/).fill("https://www.walmart.com/ip/Great-Value-All-Purpose-Flour-5-lb/10535103?sid=abc");
+  await page
+    .getByLabel(/product link/)
+    .fill("https://www.walmart.com/ip/Great-Value-All-Purpose-Flour-5-lb/10535103?sid=abc");
   await expect(page.getByText("Walmart product 10535103")).toBeVisible();
   await page.getByLabel("Product name").fill("Great Value flour");
   await page.getByLabel("Size").fill("5 lb");

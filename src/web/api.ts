@@ -20,7 +20,9 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? `The server said ${res.status}.`);
+  if (!res.ok) {
+    throw new ApiError(res.status, data?.error ?? `The server said ${res.status}.`);
+  }
   return data as T;
 }
 

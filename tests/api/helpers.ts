@@ -10,7 +10,9 @@ export const PASSWORD = "correct horse";
 
 const dirs: string[] = [];
 afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 export async function setup(opts: { password?: boolean } = {}) {
@@ -18,7 +20,9 @@ export async function setup(opts: { password?: boolean } = {}) {
   dirs.push(dir);
   const db = openDb(path.join(dir, "test.db"));
   migrateDb(db);
-  if (opts.password !== false) setPassword(db, PASSWORD);
+  if (opts.password !== false) {
+    setPassword(db, PASSWORD);
+  }
   const app = createApp({ db, photosDir: path.join(dir, "photos") });
 
   async function login(password = PASSWORD) {
@@ -35,7 +39,11 @@ export async function setup(opts: { password?: boolean } = {}) {
     cookie = res.headers.get("set-cookie")!.split(";")[0]!;
   }
 
-  async function call<T = any>(method: string, url: string, json?: unknown): Promise<{ status: number; body: T }> {
+  async function call<T = any>(
+    method: string,
+    url: string,
+    json?: unknown,
+  ): Promise<{ status: number; body: T }> {
     const res = await app.request(url, {
       method,
       headers: { cookie, ...(json === undefined ? {} : { "content-type": "application/json" }) },
@@ -48,6 +56,10 @@ export async function setup(opts: { password?: boolean } = {}) {
   return { app, db, dir, login, cookie, call };
 }
 
-export function recipeBody(name: string, ingredients: unknown[], extra: Record<string, unknown> = {}) {
+export function recipeBody(
+  name: string,
+  ingredients: unknown[],
+  extra: Record<string, unknown> = {},
+) {
   return { name, steps: [], collectionIds: [], ingredients, ...extra };
 }

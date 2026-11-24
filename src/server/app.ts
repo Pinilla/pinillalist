@@ -9,7 +9,14 @@ import { HTTPException } from "hono/http-exception";
 import { parseProductLink } from "../shared/links.ts";
 import { LOCATIONS, isLocation, type LocationKey } from "../shared/locations.ts";
 import type { Product } from "../shared/types.ts";
-import { COOKIE, COOKIE_MAX_AGE, LoginLimiter, cookieSecret, sessionValue, verifyPassword } from "./auth.ts";
+import {
+  COOKIE,
+  COOKIE_MAX_AGE,
+  LoginLimiter,
+  cookieSecret,
+  sessionValue,
+  verifyPassword,
+} from "./auth.ts";
 import type { Db } from "./db/index.ts";
 import { loginPage, setupPage } from "./login-page.ts";
 import * as repo from "./repo.ts";
@@ -32,14 +39,30 @@ export function createApp(options: AppOptions) {
   return app;
 }
 
-const PHOTO_TYPES: Record<string, string> = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" };
+const PHOTO_TYPES: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+};
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-const PUBLIC_FILES = new Set(["/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"]);
+const PUBLIC_FILES = new Set([
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
+]);
 
 function errorResponse(err: Error, c: Context) {
-  if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
-  if (err instanceof repo.NotFound) return c.json({ error: err.message }, 404);
-  if (err instanceof repo.Conflict) return c.json({ error: err.message }, 409);
+  if (err instanceof HTTPException) {
+    return c.json({ error: err.message }, err.status);
+  }
+  if (err instanceof repo.NotFound) {
+    return c.json({ error: err.message }, 404);
+  }
+  if (err instanceof repo.Conflict) {
+    return c.json({ error: err.message }, 409);
+  }
   console.error(err);
   return c.json({ error: "Something went wrong on the server." }, 500);
 }
@@ -51,16 +74,26 @@ function addLoginRoutes(app: Hono, { db, secureCookie }: AppOptions, secret: str
 
   app.post("/login", async (c) => {
     const address = clientAddress(c);
-    if (limiter.blocked(address)) return c.html(loginPage("Too many wrong tries. Wait 15 minutes and try again."), 429);
+    if (limiter.blocked(address)) {
+      return c.html(loginPage("Too many wrong tries. Wait 15 minutes and try again."), 429);
+    }
     const stored = repo.getSetting(db, "password_hash");
     const value = sessionValue(db);
-    if (!stored || !value) return c.html(setupPage(), 503);
+    if (!stored || !value) {
+      return c.html(setupPage(), 503);
+    }
     if (!verifyPassword(await submittedPassword(c), stored)) {
       limiter.fail(address);
       return c.html(loginPage("That's not the household password."), 401);
     }
     limiter.reset(address);
-    await setSignedCookie(c, COOKIE, value, secret, { path: "/", httpOnly: true, secure: secureCookie ?? false, sameSite: "Lax", maxAge: COOKIE_MAX_AGE });
+    await setSignedCookie(c, COOKIE, value, secret, {
+      path: "/",
+      httpOnly: true,
+      secure: secureCookie ?? false,
+      sameSite: "Lax",
+      maxAge: COOKIE_MAX_AGE,
+    });
     return c.redirect("/");
   });
 
@@ -72,11 +105,17 @@ function addLoginRoutes(app: Hono, { db, secureCookie }: AppOptions, secret: str
 
 function requireLogin(app: Hono, db: Db, secret: string) {
   app.use("*", async (c, next) => {
-    if (PUBLIC_FILES.has(c.req.path)) return next();
+    if (PUBLIC_FILES.has(c.req.path)) {
+      return next();
+    }
     const expected = sessionValue(db);
     const value = await getSignedCookie(c, secret, COOKIE);
-    if (expected && value === expected) return next();
-    if (c.req.path.startsWith("/api/")) return c.json({ error: "Log in first." }, 401);
+    if (expected && value === expected) {
+      return next();
+    }
+    if (c.req.path.startsWith("/api/")) {
+      return c.json({ error: "Log in first." }, 401);
+    }
     return c.redirect("/login");
   });
 }
@@ -97,13 +136,23 @@ function addCatalogRoutes(api: Hono, db: Db) {
 
   api.post("/groceries", async (c) => {
     const b = await body(c);
-    const { grocery, created } = repo.findOrCreateGrocery(db, str(b.name, "name"), str(b.unit, "unit", ""));
+    const { grocery, created } = repo.findOrCreateGrocery(
+      db,
+      str(b.name, "name"),
+      str(b.unit, "unit", ""),
+    );
     return c.json(grocery, created ? 201 : 200);
   });
 
   api.patch("/groceries/:id", async (c) => {
     const b = await body(c);
-    return c.json(repo.updateGrocery(db, id(c), { name: optStr(b.name, "name"), unit: optStr(b.unit, "unit"), location: locationInput(b.location) }));
+    return c.json(
+      repo.updateGrocery(db, id(c), {
+        name: optStr(b.name, "name"),
+        unit: optStr(b.unit, "unit"),
+        location: locationInput(b.location),
+      }),
+    );
   });
 
   api.delete("/groceries/:id", (c) => {
@@ -111,13 +160,17 @@ function addCatalogRoutes(api: Hono, db: Db) {
     return c.body(null, 204);
   });
 
-  api.put("/groceries/:id/product", async (c) => c.json(repo.setProduct(db, id(c), productInput(await body(c)))));
+  api.put("/groceries/:id/product", async (c) =>
+    c.json(repo.setProduct(db, id(c), productInput(await body(c)))),
+  );
 
   api.delete("/groceries/:id/product", (c) => c.json(repo.removeProduct(db, id(c))));
 
   api.post("/groceries/:id/merge", async (c) => {
     const into = (await body(c)).intoId;
-    if (!Number.isInteger(into)) bad("intoId must be a grocery id.");
+    if (!Number.isInteger(into)) {
+      bad("intoId must be a grocery id.");
+    }
     return c.json(repo.mergeGrocery(db, id(c), into as number));
   });
 
@@ -132,7 +185,9 @@ function addCatalogRoutes(api: Hono, db: Db) {
 function addRecipeRoutes(api: Hono, { db, photosDir }: AppOptions) {
   api.get("/collections", (c) => c.json(repo.listCollections(db)));
 
-  api.post("/collections", async (c) => c.json(repo.createCollection(db, str((await body(c)).name, "name")), 201));
+  api.post("/collections", async (c) =>
+    c.json(repo.createCollection(db, str((await body(c)).name, "name")), 201),
+  );
 
   api.get("/recipes", (c) => {
     const ids = c.req.query("ids");
@@ -143,7 +198,9 @@ function addRecipeRoutes(api: Hono, { db, photosDir }: AppOptions) {
 
   api.post("/recipes", async (c) => c.json(repo.createRecipe(db, recipeInput(await body(c))), 201));
 
-  api.put("/recipes/:id", async (c) => c.json(repo.updateRecipe(db, id(c), recipeInput(await body(c)))));
+  api.put("/recipes/:id", async (c) =>
+    c.json(repo.updateRecipe(db, id(c), recipeInput(await body(c)))),
+  );
 
   api.delete("/recipes/:id", async (c) => {
     await deletePhoto(photosDir, repo.deleteRecipe(db, id(c)));
@@ -162,11 +219,18 @@ function addRecipeRoutes(api: Hono, { db, photosDir }: AppOptions) {
 function addListRoutes(api: Hono, db: Db) {
   api.get("/lists", (c) => c.json(repo.listLists(db)));
 
-  api.post("/lists", async (c) => c.json(repo.createList(db, str((await body(c)).name, "name")), 201));
+  api.post("/lists", async (c) =>
+    c.json(repo.createList(db, str((await body(c)).name, "name")), 201),
+  );
 
   api.patch("/lists/:id", async (c) => {
     const b = await body(c);
-    return c.json(repo.updateList(db, id(c), { name: optStr(b.name, "name"), isDefault: bool(b.isDefault, "isDefault") }));
+    return c.json(
+      repo.updateList(db, id(c), {
+        name: optStr(b.name, "name"),
+        isDefault: bool(b.isDefault, "isDefault"),
+      }),
+    );
   });
 
   api.delete("/lists/:id", (c) => {
@@ -174,27 +238,42 @@ function addListRoutes(api: Hono, db: Db) {
     return c.body(null, 204);
   });
 
-  api.post("/lists/:id/items", async (c) => c.json(repo.addListItem(db, id(c), listItemInput(await body(c))), 201));
+  api.post("/lists/:id/items", async (c) =>
+    c.json(repo.addListItem(db, id(c), listItemInput(await body(c))), 201),
+  );
 
   api.post("/lists/:id/clear-done", (c) => c.json(repo.clearDone(db, id(c))));
 
   api.patch("/list-items/:id", async (c) => {
     const b = await body(c);
     const amount = b.amount === undefined ? undefined : num(b.amount, "amount");
-    return c.json(repo.updateListItem(db, id(c), { done: bool(b.done, "done"), amount, details: optStr(b.details, "details") }));
+    return c.json(
+      repo.updateListItem(db, id(c), {
+        done: bool(b.done, "done"),
+        amount,
+        details: optStr(b.details, "details"),
+      }),
+    );
   });
 
   api.delete("/list-items/:id", (c) => c.json(repo.deleteListItem(db, id(c))));
 }
 
 function addFileRoutes(app: Hono, { photosDir, distDir }: AppOptions) {
-  app.use("/photos/*", serveStatic({ root: photosDir, rewriteRequestPath: (p) => p.replace(/^\/photos/, "") }));
+  app.use(
+    "/photos/*",
+    serveStatic({ root: photosDir, rewriteRequestPath: (p) => p.replace(/^\/photos/, "") }),
+  );
   app.get("/photos/*", (c) => c.notFound());
-  if (!distDir) return;
+  if (!distDir) {
+    return;
+  }
   const index = path.join(distDir, "index.html");
   app.use("*", serveStatic({ root: distDir }));
   app.get("*", (c) => {
-    if (!existsSync(index)) return c.text("The UI isn't built. Run npm run build.", 500);
+    if (!existsSync(index)) {
+      return c.text("The UI isn't built. Run npm run build.", 500);
+    }
     return c.html(readFileSync(index, "utf8"));
   });
 }
@@ -205,14 +284,22 @@ async function submittedPassword(c: Context): Promise<string> {
 }
 
 function clientAddress(c: Context): string {
-  return c.req.header("x-real-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  return (
+    c.req.header("x-real-ip") ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "local"
+  );
 }
 
 async function storePhoto(photosDir: string, file: unknown): Promise<string> {
-  if (!(file instanceof File)) bad("Send the picture as the photo field.");
+  if (!(file instanceof File)) {
+    bad("Send the picture as the photo field.");
+  }
   const ext = PHOTO_TYPES[file.type];
-  if (!ext) bad("The photo must be a JPEG, PNG or WebP picture.");
-  if (file.size > MAX_PHOTO_BYTES) bad("The photo must be under 10 MB.");
+  if (!ext) {
+    bad("The photo must be a JPEG, PNG or WebP picture.");
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    bad("The photo must be under 10 MB.");
+  }
   const name = randomBytes(12).toString("hex") + ext;
   await mkdir(photosDir, { recursive: true });
   await writeFile(path.join(photosDir, name), Buffer.from(await file.arrayBuffer()));
@@ -220,7 +307,9 @@ async function storePhoto(photosDir: string, file: unknown): Promise<string> {
 }
 
 async function deletePhoto(photosDir: string, photo: string | null) {
-  if (photo) await unlink(path.join(photosDir, photo)).catch(() => {});
+  if (photo) {
+    await unlink(path.join(photosDir, photo)).catch(() => {});
+  }
 }
 
 function bad(message: string): never {
@@ -229,25 +318,35 @@ function bad(message: string): never {
 
 function id(c: Context, name = "id"): number {
   const n = Number(c.req.param(name));
-  if (!Number.isInteger(n) || n <= 0) bad(`Bad ${name}`);
+  if (!Number.isInteger(n) || n <= 0) {
+    bad(`Bad ${name}`);
+  }
   return n;
 }
 
 function idList(text: string): number[] {
   const ids = text.split(",").filter(Boolean).map(Number);
-  if (ids.some((n) => !Number.isInteger(n))) bad("ids must be numbers.");
+  if (ids.some((n) => !Number.isInteger(n))) {
+    bad("ids must be numbers.");
+  }
   return ids;
 }
 
 async function body(c: Context): Promise<Record<string, unknown>> {
   const value = await c.req.json().catch(() => null);
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
   bad("Send a JSON object.");
 }
 
 function str(v: unknown, field: string, fallback?: string): string {
-  if (v === undefined && fallback !== undefined) return fallback;
-  if (typeof v !== "string") bad(`${field} must be text.`);
+  if (v === undefined && fallback !== undefined) {
+    return fallback;
+  }
+  if (typeof v !== "string") {
+    bad(`${field} must be text.`);
+  }
   return v;
 }
 
@@ -256,30 +355,50 @@ function optStr(v: unknown, field: string): string | undefined {
 }
 
 function num(v: unknown, field: string): number | null {
-  if (v === null || v === undefined || v === "") return null;
-  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) bad(`${field} must be a number of 0 or more.`);
+  if (v === null || v === undefined || v === "") {
+    return null;
+  }
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) {
+    bad(`${field} must be a number of 0 or more.`);
+  }
   return v;
 }
 
 function bool(v: unknown, field: string): boolean | undefined {
-  if (v === undefined) return undefined;
-  if (typeof v !== "boolean") bad(`${field} must be true or false.`);
+  if (v === undefined) {
+    return undefined;
+  }
+  if (typeof v !== "boolean") {
+    bad(`${field} must be true or false.`);
+  }
   return v;
 }
 
 function locationInput(v: unknown): LocationKey | null | undefined {
-  if (v === undefined) return undefined;
-  if (v === null || v === "") return null;
-  if (!isLocation(v)) bad(`location must be one of: ${LOCATIONS.map((l) => l.key).join(", ")}`);
+  if (v === undefined) {
+    return undefined;
+  }
+  if (v === null || v === "") {
+    return null;
+  }
+  if (!isLocation(v)) {
+    bad(`location must be one of: ${LOCATIONS.map((l) => l.key).join(", ")}`);
+  }
   return v;
 }
 
 function productInput(b: Record<string, unknown>): Product {
   const link = parseProductLink(str(b.link, "link"));
-  if (!link.ok) bad(link.error);
+  if (!link.ok) {
+    bad(link.error);
+  }
   const soldBy = b.soldBy === undefined ? "each" : b.soldBy;
-  if (soldBy !== "each" && soldBy !== "pound") bad("soldBy must be each or pound.");
-  if (soldBy === "pound" && link.store !== "walmart") bad("Only Walmart deli products are sold by the pound.");
+  if (soldBy !== "each" && soldBy !== "pound") {
+    bad("soldBy must be each or pound.");
+  }
+  if (soldBy === "pound" && link.store !== "walmart") {
+    bad("Only Walmart deli products are sold by the pound.");
+  }
   return {
     store: link.store,
     storeId: link.storeId,
@@ -292,8 +411,12 @@ function productInput(b: Record<string, unknown>): Product {
 
 function listItemInput(b: Record<string, unknown>) {
   const groceryId = b.groceryId;
-  if (groceryId !== undefined && !Number.isInteger(groceryId)) bad("groceryId must be a number.");
-  if (groceryId === undefined && typeof b.groceryName !== "string") bad("Send a groceryId or a groceryName.");
+  if (groceryId !== undefined && !Number.isInteger(groceryId)) {
+    bad("groceryId must be a number.");
+  }
+  if (groceryId === undefined && typeof b.groceryName !== "string") {
+    bad("Send a groceryId or a groceryName.");
+  }
   return {
     groceryId: groceryId as number | undefined,
     groceryName: optStr(b.groceryName, "groceryName"),
@@ -319,26 +442,39 @@ function recipeInput(b: Record<string, unknown>): repo.RecipeInput {
 }
 
 function listOf(v: unknown, field: string): unknown[] {
-  if (v === undefined || v === null) return [];
-  if (!Array.isArray(v)) bad(`${field} must be a list.`);
+  if (v === undefined || v === null) {
+    return [];
+  }
+  if (!Array.isArray(v)) {
+    bad(`${field} must be a list.`);
+  }
   return v;
 }
 
 function collectionId(n: unknown): number {
-  if (!Number.isInteger(n)) bad("collectionIds must be numbers.");
+  if (!Number.isInteger(n)) {
+    bad("collectionIds must be numbers.");
+  }
   return n as number;
 }
 
 function ingredientInput(raw: unknown, i: number): repo.IngredientInput {
-  if (!raw || typeof raw !== "object") bad(`ingredients[${i}] must be an object.`);
+  if (!raw || typeof raw !== "object") {
+    bad(`ingredients[${i}] must be an object.`);
+  }
   const r = raw as Record<string, unknown>;
-  if (r.kind === "heading") return { kind: "heading", text: str(r.text, "heading text") };
+  if (r.kind === "heading") {
+    return { kind: "heading", text: str(r.text, "heading text") };
+  }
   return {
     kind: "ingredient",
     groceryName: str(r.groceryName, "groceryName"),
     cookingAmount: str(r.cookingAmount, "cookingAmount", ""),
     preparation: str(r.preparation, "preparation", ""),
     optional: bool(r.optional, "optional") ?? false,
-    subRecipeId: r.subRecipeId === undefined || r.subRecipeId === null ? null : (num(r.subRecipeId, "subRecipeId") as number),
+    subRecipeId:
+      r.subRecipeId === undefined || r.subRecipeId === null
+        ? null
+        : (num(r.subRecipeId, "subRecipeId") as number),
   };
 }

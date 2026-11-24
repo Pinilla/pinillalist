@@ -3,27 +3,90 @@ import { countedAmount, parseIngredient } from "./parse.ts";
 
 describe("parseIngredient", () => {
   it.each([
-    [["Ground Beef", undefined, ""], ["Ground Beef", "", ""]],
-    [["butter ", "3 Tbsp", "((unsalted and divided))"], ["Butter", "3 Tbsp", "unsalted and divided"]],
-    [["garlic", "4 cloves", " ((minced))"], ["Garlic", "4 cloves", "minced"]],
-    [["Cajun seasoning ", "", "( to taste)"], ["Cajun seasoning", "", "to taste"]],
-    [["Salt and pepper", "", " ( (to taste, optional))"], ["Salt and pepper", "", "to taste, optional"]],
-    [["scallions (sliced)", "2", ""], ["Scallions", "2", "sliced"]],
-    [["mozzarella cheese, shredded and divided", "2 cups", ""], ["Mozzarella cheese", "2 cups", "shredded and divided"]],
-    [["onion", "1", "crushed"], ["Onion", "1", "crushed"]],
-    [["green onions (sliced, or chives)", "", ""], ["Green onions", "", "sliced, or chives"]],
-    [["unsalted butter (1 stick; 110g)", "", ""], ["Unsalted butter", "", "1 stick; 110g"]],
-    [["∙ 25g chopped calabrian chiles (or chili flakes)", "", ""], ["Calabrian chiles", "25g", "chopped, or chili flakes"]],
-    [["∙ 30g 6 cloves  minced garlic (15g for spinach)", "", ""], ["Garlic", "30g 6 cloves", "minced, 15g for spinach"]],
-    [["minced garlic", "1 tbsp", ""], ["Garlic", "1 tbsp", "minced"]],
-    [["parmesan", "(3/4c)", ""], ["Parmesan", "3/4c", ""]],
-    [["7g salt", "(1t)", ""], ["Salt", "7g (1t)", ""]],
-    [["Large Yellow Onion", "1", ""], ["Yellow Onion", "1 large", ""]],
-    [["large egg", "", ""], ["Egg", "large", ""]],
-    [["Broth )", "1 cup", ""], ["Broth", "1 cup", ""]],
-    [["and 1/2 cups (188g) all-purpose flour (spooned & leveled)", "2", ""], ["All-purpose flour", "2 and 1/2 cups", "188g, spooned & leveled"]],
-    [["of chili seasoning", "2 packet", ""], ["Chili seasoning", "2 packet", ""]],
-    [["Raw Chicken Breast", "", ""], ["Chicken Breast", "", "raw"]],
+    [
+      ["Ground Beef", undefined, ""],
+      ["Ground Beef", "", ""],
+    ],
+    [
+      ["butter ", "3 Tbsp", "((unsalted and divided))"],
+      ["Butter", "3 Tbsp", "unsalted and divided"],
+    ],
+    [
+      ["garlic", "4 cloves", " ((minced))"],
+      ["Garlic", "4 cloves", "minced"],
+    ],
+    [
+      ["Cajun seasoning ", "", "( to taste)"],
+      ["Cajun seasoning", "", "to taste"],
+    ],
+    [
+      ["Salt and pepper", "", " ( (to taste, optional))"],
+      ["Salt and pepper", "", "to taste, optional"],
+    ],
+    [
+      ["scallions (sliced)", "2", ""],
+      ["Scallions", "2", "sliced"],
+    ],
+    [
+      ["mozzarella cheese, shredded and divided", "2 cups", ""],
+      ["Mozzarella cheese", "2 cups", "shredded and divided"],
+    ],
+    [
+      ["onion", "1", "crushed"],
+      ["Onion", "1", "crushed"],
+    ],
+    [
+      ["green onions (sliced, or chives)", "", ""],
+      ["Green onions", "", "sliced, or chives"],
+    ],
+    [
+      ["unsalted butter (1 stick; 110g)", "", ""],
+      ["Unsalted butter", "", "1 stick; 110g"],
+    ],
+    [
+      ["∙ 25g chopped calabrian chiles (or chili flakes)", "", ""],
+      ["Calabrian chiles", "25g", "chopped, or chili flakes"],
+    ],
+    [
+      ["∙ 30g 6 cloves  minced garlic (15g for spinach)", "", ""],
+      ["Garlic", "30g 6 cloves", "minced, 15g for spinach"],
+    ],
+    [
+      ["minced garlic", "1 tbsp", ""],
+      ["Garlic", "1 tbsp", "minced"],
+    ],
+    [
+      ["parmesan", "(3/4c)", ""],
+      ["Parmesan", "3/4c", ""],
+    ],
+    [
+      ["7g salt", "(1t)", ""],
+      ["Salt", "7g (1t)", ""],
+    ],
+    [
+      ["Large Yellow Onion", "1", ""],
+      ["Yellow Onion", "1 large", ""],
+    ],
+    [
+      ["large egg", "", ""],
+      ["Egg", "large", ""],
+    ],
+    [
+      ["Broth )", "1 cup", ""],
+      ["Broth", "1 cup", ""],
+    ],
+    [
+      ["and 1/2 cups (188g) all-purpose flour (spooned & leveled)", "2", ""],
+      ["All-purpose flour", "2 and 1/2 cups", "188g, spooned & leveled"],
+    ],
+    [
+      ["of chili seasoning", "2 packet", ""],
+      ["Chili seasoning", "2 packet", ""],
+    ],
+    [
+      ["Raw Chicken Breast", "", ""],
+      ["Chicken Breast", "", "raw"],
+    ],
   ] as const)("parses %j", ([name, quantity, note], [grocery, cooking, prep]) => {
     expect(parseIngredient({ name, quantity, note })).toEqual({
       groceryName: grocery,
@@ -54,11 +117,19 @@ describe("countedAmount", () => {
     expect(countedAmount(text)).toEqual(expected);
   });
 
-  it.each(["", "1 cup", "½ teaspoon", "2 cloves", "8 oz", "10 g", "Pinch", "4-6", "2 - 3", "1 15 oz cans", "1 cup (113 g)"])(
-    "flags %s for the household to fill in",
-    (text) => {
-      expect(countedAmount(text)).toBeNull();
-    },
-  );
+  it.each([
+    "",
+    "1 cup",
+    "½ teaspoon",
+    "2 cloves",
+    "8 oz",
+    "10 g",
+    "Pinch",
+    "4-6",
+    "2 - 3",
+    "1 15 oz cans",
+    "1 cup (113 g)",
+  ])("flags %s for the household to fill in", (text) => {
+    expect(countedAmount(text)).toBeNull();
+  });
 });
-

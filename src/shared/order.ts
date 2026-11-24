@@ -63,7 +63,9 @@ export interface OrderPlan {
 }
 
 export function loadOrder(saved: string | null): OrderState {
-  if (!saved) return newOrder();
+  if (!saved) {
+    return newOrder();
+  }
   try {
     return migrate(JSON.parse(saved) as SavedOrder);
   } catch {
@@ -71,10 +73,16 @@ export function loadOrder(saved: string | null): OrderState {
   }
 }
 
-export function updateOrder(state: OrderState, action: OrderAction, check: CheckItem[]): OrderState {
+export function updateOrder(
+  state: OrderState,
+  action: OrderAction,
+  check: CheckItem[],
+): OrderState {
   switch (action.type) {
     case "toggleRecipe":
-      return state.recipeIds.includes(action.recipeId) ? unpickRecipe(state, action.recipeId) : pickRecipe(state, action.recipeId);
+      return state.recipeIds.includes(action.recipeId)
+        ? unpickRecipe(state, action.recipeId)
+        : pickRecipe(state, action.recipeId);
     case "pickRecipe":
       return pickRecipe(state, action.recipeId, action.choice);
     case "unpickRecipe":
@@ -107,7 +115,12 @@ export function updateOrder(state: OrderState, action: OrderAction, check: Check
 }
 
 export function planOrder(state: OrderState, inputs: OrderInputs): OrderPlan {
-  const merged = mergeIngredients(inputs.recipes, inputs.groceries, state.choices, inputs.subRecipes);
+  const merged = mergeIngredients(
+    inputs.recipes,
+    inputs.groceries,
+    state.choices,
+    inputs.subRecipes,
+  );
   const check = buildStockCheck(merged, inputs.essentials, inputs.groceries);
   const lines = orderLines(state, check, inputs.groceries);
   return { check, stockCheck: stockCheckView(state, check), lines, carts: buildCartPlan(lines) };
@@ -142,9 +155,21 @@ const VERSION_2_STEPS = [0, 1, 1, 2, 3];
 
 function migrate(saved: SavedOrder): OrderState {
   const { collectionFilter, essentials, ...rest } = saved;
-  const withFilters = { ...rest, collectionFilters: rest.collectionFilters ?? filtersFromSingle(collectionFilter) };
-  if (saved.version === 3) return { ...newOrder(), ...withFilters, stock: (rest.stock ?? {}) as Record<string, number>, version: 3 };
-  if (saved.version !== 1 && saved.version !== 2) return newOrder();
+  const withFilters = {
+    ...rest,
+    collectionFilters: rest.collectionFilters ?? filtersFromSingle(collectionFilter),
+  };
+  if (saved.version === 3) {
+    return {
+      ...newOrder(),
+      ...withFilters,
+      stock: (rest.stock ?? {}) as Record<string, number>,
+      version: 3,
+    };
+  }
+  if (saved.version !== 1 && saved.version !== 2) {
+    return newOrder();
+  }
   return {
     ...newOrder(),
     ...withFilters,
@@ -160,30 +185,52 @@ function filtersFromSingle(collectionFilter: number | null | undefined): number[
 }
 
 function stockFromOldAnswers(answers: Record<string, OldStockAnswer>): Record<string, number> {
-  return Object.fromEntries(Object.entries(answers).map(([id, answer]) => [id, quantityFromOldAnswer(answer)]));
+  return Object.fromEntries(
+    Object.entries(answers).map(([id, answer]) => [id, quantityFromOldAnswer(answer)]),
+  );
 }
 
 function quantityFromOldAnswer(answer: OldStockAnswer): number {
-  if (typeof answer === "number") return answer;
+  if (typeof answer === "number") {
+    return answer;
+  }
   return answer.choice === "have" ? 0 : answer.quantity;
 }
 
-function addEssentials(stock: Record<string, number>, essentials: Record<string, number>): Record<string, number> {
+function addEssentials(
+  stock: Record<string, number>,
+  essentials: Record<string, number>,
+): Record<string, number> {
   const combined = { ...stock };
-  for (const [id, quantity] of Object.entries(essentials)) combined[id] = (combined[id] ?? 0) + quantity;
+  for (const [id, quantity] of Object.entries(essentials)) {
+    combined[id] = (combined[id] ?? 0) + quantity;
+  }
   return combined;
 }
 
 function pickRecipe(state: OrderState, recipeId: number, choice?: RecipeChoice): OrderState {
   const choices = { ...state.choices };
-  if (choice) choices[recipeId] = choice;
-  else delete choices[recipeId];
-  return { ...state, recipeIds: withItem(state.recipeIds, recipeId), choices, stockReviewed: false };
+  if (choice) {
+    choices[recipeId] = choice;
+  } else {
+    delete choices[recipeId];
+  }
+  return {
+    ...state,
+    recipeIds: withItem(state.recipeIds, recipeId),
+    choices,
+    stockReviewed: false,
+  };
 }
 
 function unpickRecipe(state: OrderState, recipeId: number): OrderState {
   const { [recipeId]: _unpicked, ...choices } = state.choices;
-  return { ...state, recipeIds: state.recipeIds.filter((id) => id !== recipeId), choices, stockReviewed: false };
+  return {
+    ...state,
+    recipeIds: state.recipeIds.filter((id) => id !== recipeId),
+    choices,
+    stockReviewed: false,
+  };
 }
 
 function goToStep(state: OrderState, step: number, check: CheckItem[]): OrderState {
@@ -196,25 +243,41 @@ function openStockCheck(state: OrderState, check: CheckItem[]): OrderState {
   return { ...state, stockIndex: unanswered < check.length ? unanswered : 0, stockReviewed: false };
 }
 
-function answerAndAdvance(state: OrderState, check: CheckItem[], index: number, quantity: number): OrderState {
+function answerAndAdvance(
+  state: OrderState,
+  check: CheckItem[],
+  index: number,
+  quantity: number,
+): OrderState {
   const answered = { ...state, stock: { ...state.stock, [check[index]!.groceryId]: quantity } };
-  if (index + 1 < check.length) return { ...answered, stockIndex: index + 1, stockReviewed: false };
+  if (index + 1 < check.length) {
+    return { ...answered, stockIndex: index + 1, stockReviewed: false };
+  }
   const unanswered = firstUnanswered(answered, check);
-  if (unanswered < check.length) return { ...answered, stockIndex: unanswered, stockReviewed: false };
+  if (unanswered < check.length) {
+    return { ...answered, stockIndex: unanswered, stockReviewed: false };
+  }
   return { ...answered, stockReviewed: true };
 }
 
 function jumpToNewCard(state: OrderState, check: CheckItem[]): OrderState {
-  if (state.step !== STOCK_CHECK_STEP) return state;
+  if (state.step !== STOCK_CHECK_STEP) {
+    return state;
+  }
   const unanswered = firstUnanswered(state, check);
-  if (unanswered === check.length || !isAnswered(state, check[currentIndex(state, check)])) return state;
+  if (unanswered === check.length || !isAnswered(state, check[currentIndex(state, check)])) {
+    return state;
+  }
   return { ...state, stockIndex: unanswered, stockReviewed: false };
 }
 
 function setExtra(state: OrderState, groceryId: number, quantity: number): OrderState {
   const extras = { ...state.extras };
-  if (quantity > 0) extras[groceryId] = quantity;
-  else delete extras[groceryId];
+  if (quantity > 0) {
+    extras[groceryId] = quantity;
+  } else {
+    delete extras[groceryId];
+  }
   return { ...state, extras };
 }
 
@@ -236,9 +299,13 @@ function currentIndex(state: OrderState, check: CheckItem[]): number {
 }
 
 function stockCheckView(state: OrderState, check: CheckItem[]): StockCheckView {
-  if (check.length === 0) return { kind: "empty" };
+  if (check.length === 0) {
+    return { kind: "empty" };
+  }
   const allAnswered = firstUnanswered(state, check) === check.length;
-  if (state.stockReviewed && allAnswered) return { kind: "summary", buying: countBuying(state, check) };
+  if (state.stockReviewed && allAnswered) {
+    return { kind: "summary", buying: countBuying(state, check) };
+  }
   return { kind: "card", index: currentIndex(state, check), allAnswered };
 }
 
@@ -246,17 +313,31 @@ function countBuying(state: OrderState, check: CheckItem[]): number {
   return check.filter((item) => (state.stock[item.groceryId] ?? 0) > 0).length;
 }
 
-function orderLines(state: OrderState, check: CheckItem[], groceries: Map<number, Grocery>): OrderLine[] {
+function orderLines(
+  state: OrderState,
+  check: CheckItem[],
+  groceries: Map<number, Grocery>,
+): OrderLine[] {
   const quantities = new Map<number, number>();
   const add = (groceryId: number, quantity: number) => {
-    if (quantity > 0) quantities.set(groceryId, (quantities.get(groceryId) ?? 0) + quantity);
+    if (quantity > 0) {
+      quantities.set(groceryId, (quantities.get(groceryId) ?? 0) + quantity);
+    }
   };
-  for (const item of check) add(item.groceryId, state.stock[item.groceryId] ?? 0);
-  for (const [id, quantity] of Object.entries(state.extras)) add(Number(id), quantity);
-  return [...quantities].flatMap(([groceryId, quantity]) => lineFor(state, groceries.get(groceryId), quantity));
+  for (const item of check) {
+    add(item.groceryId, state.stock[item.groceryId] ?? 0);
+  }
+  for (const [id, quantity] of Object.entries(state.extras)) {
+    add(Number(id), quantity);
+  }
+  return [...quantities].flatMap(([groceryId, quantity]) =>
+    lineFor(state, groceries.get(groceryId), quantity),
+  );
 }
 
 function lineFor(state: OrderState, grocery: Grocery | undefined, quantity: number): OrderLine[] {
-  if (!grocery || state.removed.includes(grocery.id)) return [];
+  if (!grocery || state.removed.includes(grocery.id)) {
+    return [];
+  }
   return [{ groceryId: grocery.id, groceryName: grocery.name, quantity, product: grocery.product }];
 }

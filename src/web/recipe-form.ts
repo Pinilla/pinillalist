@@ -13,7 +13,9 @@ export type FormRow =
       subRecipeId: string;
     };
 
-export type IngredientFields = Partial<Omit<Extract<FormRow, { kind: "ingredient" }>, "key" | "kind">>;
+export type IngredientFields = Partial<
+  Omit<Extract<FormRow, { kind: "ingredient" }>, "key" | "kind">
+>;
 
 export interface RecipeForm {
   name: string;
@@ -29,7 +31,15 @@ export interface RecipeForm {
   rows: FormRow[];
 }
 
-type TextField = "name" | "servings" | "prepMinutes" | "cookMinutes" | "steps" | "note" | "sourceName" | "sourceUrl";
+type TextField =
+  | "name"
+  | "servings"
+  | "prepMinutes"
+  | "cookMinutes"
+  | "steps"
+  | "note"
+  | "sourceName"
+  | "sourceUrl";
 
 export type FormAction =
   | { type: "setText"; field: TextField; value: string }
@@ -55,7 +65,14 @@ export interface RecipeBody {
   collectionIds: number[];
   ingredients: (
     | { kind: "heading"; text: string }
-    | { kind: "ingredient"; groceryName: string; cookingAmount: string; preparation: string; optional: boolean; subRecipeId: number | null }
+    | {
+        kind: "ingredient";
+        groceryName: string;
+        cookingAmount: string;
+        preparation: string;
+        optional: boolean;
+        subRecipeId: number | null;
+      }
   )[];
 }
 
@@ -87,7 +104,9 @@ export function formFromRecipe(recipe: Recipe): RecipeForm {
     sourceUrl: recipe.sourceUrl,
     rating: recipe.rating,
     collectionIds: recipe.collectionIds,
-    rows: recipe.ingredients.length ? recipe.ingredients.map(rowFromIngredient) : [blankIngredient()],
+    rows: recipe.ingredients.length
+      ? recipe.ingredients.map(rowFromIngredient)
+      : [blankIngredient()],
   };
 }
 
@@ -100,9 +119,19 @@ export function updateForm(form: RecipeForm, action: FormAction): RecipeForm {
     case "toggleCollection":
       return { ...form, collectionIds: toggleCollection(form.collectionIds, action.collectionId) };
     case "editIngredient":
-      return { ...form, rows: form.rows.map((r) => (r.key === action.key && r.kind === "ingredient" ? { ...r, ...action.fields } : r)) };
+      return {
+        ...form,
+        rows: form.rows.map((r) =>
+          r.key === action.key && r.kind === "ingredient" ? { ...r, ...action.fields } : r,
+        ),
+      };
     case "editHeading":
-      return { ...form, rows: form.rows.map((r) => (r.key === action.key && r.kind === "heading" ? { ...r, text: action.text } : r)) };
+      return {
+        ...form,
+        rows: form.rows.map((r) =>
+          r.key === action.key && r.kind === "heading" ? { ...r, text: action.text } : r,
+        ),
+      };
     case "moveRow":
       return { ...form, rows: moveRow(form.rows, action.index, action.by) };
     case "removeRow":
@@ -133,11 +162,21 @@ export function formToBody(form: RecipeForm): RecipeBody {
 let nextKey = 1;
 
 function blankIngredient(): FormRow {
-  return { key: nextKey++, kind: "ingredient", groceryName: "", cookingAmount: "", preparation: "", optional: false, subRecipeId: "" };
+  return {
+    key: nextKey++,
+    kind: "ingredient",
+    groceryName: "",
+    cookingAmount: "",
+    preparation: "",
+    optional: false,
+    subRecipeId: "",
+  };
 }
 
 function rowFromIngredient(row: IngredientRow): FormRow {
-  if (row.kind === "heading") return { key: nextKey++, kind: "heading", text: row.text };
+  if (row.kind === "heading") {
+    return { key: nextKey++, kind: "heading", text: row.text };
+  }
   return {
     key: nextKey++,
     kind: "ingredient",
@@ -150,7 +189,9 @@ function rowFromIngredient(row: IngredientRow): FormRow {
 }
 
 function ingredientFromRow(row: FormRow): RecipeBody["ingredients"][number] {
-  if (row.kind === "heading") return { kind: "heading", text: row.text };
+  if (row.kind === "heading") {
+    return { kind: "heading", text: row.text };
+  }
   return {
     kind: "ingredient",
     groceryName: row.groceryName,

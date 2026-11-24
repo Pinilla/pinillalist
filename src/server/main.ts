@@ -9,7 +9,12 @@ mkdirSync(config.photosDir, { recursive: true });
 const db = openDb(config.dbFile);
 migrateDb(db);
 
-const app = createApp({ db, photosDir: config.photosDir, distDir: config.distDir, secureCookie: config.secureCookie });
+const app = createApp({
+  db,
+  photosDir: config.photosDir,
+  distDir: config.distDir,
+  secureCookie: config.secureCookie,
+});
 
 serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
   console.log(`pinillalist listening on http://${info.address}:${info.port}`);

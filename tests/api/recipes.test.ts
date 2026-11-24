@@ -12,7 +12,12 @@ describe("recipes", () => {
         "Tacos",
         [
           { kind: "heading", text: "Filling" },
-          { kind: "ingredient", groceryName: "Ground beef", cookingAmount: "1 lb", preparation: "" },
+          {
+            kind: "ingredient",
+            groceryName: "Ground beef",
+            cookingAmount: "1 lb",
+            preparation: "",
+          },
           { kind: "ingredient", groceryName: "Onion", cookingAmount: "1", preparation: "diced" },
         ],
         { collectionIds: [col.id], steps: ["Brown the beef.", "  ", "Add onion."], prepTime: 600 },
@@ -21,7 +26,11 @@ describe("recipes", () => {
     expect(res.status).toBe(201);
     expect(res.body.steps).toEqual(["Brown the beef.", "Add onion."]);
     expect(res.body.collectionIds).toEqual([col.id]);
-    expect(res.body.ingredients.map((i: { kind: string }) => i.kind)).toEqual(["heading", "ingredient", "ingredient"]);
+    expect(res.body.ingredients.map((i: { kind: string }) => i.kind)).toEqual([
+      "heading",
+      "ingredient",
+      "ingredient",
+    ]);
     expect(res.body.ingredients[2]).toMatchObject({ groceryName: "Onion", preparation: "diced" });
     expect((await call("GET", "/api/groceries")).body).toHaveLength(2);
   });
@@ -36,14 +45,28 @@ describe("recipes", () => {
 
   it("replaces a recipe's ingredients on save", async () => {
     const { call } = await setup();
-    const { body: r } = await call("POST", "/api/recipes", recipeBody("Soup", [{ kind: "ingredient", groceryName: "Leek" }]));
-    const { body: saved } = await call("PUT", `/api/recipes/${r.id}`, recipeBody("Soup", [{ kind: "ingredient", groceryName: "Carrot" }]));
-    expect(saved.ingredients.map((i: { groceryName: string }) => i.groceryName)).toEqual(["Carrot"]);
+    const { body: r } = await call(
+      "POST",
+      "/api/recipes",
+      recipeBody("Soup", [{ kind: "ingredient", groceryName: "Leek" }]),
+    );
+    const { body: saved } = await call(
+      "PUT",
+      `/api/recipes/${r.id}`,
+      recipeBody("Soup", [{ kind: "ingredient", groceryName: "Carrot" }]),
+    );
+    expect(saved.ingredients.map((i: { groceryName: string }) => i.groceryName)).toEqual([
+      "Carrot",
+    ]);
   });
 
   it("saves optional ingredients and ingredients made from another recipe", async () => {
     const { call } = await setup();
-    const { body: sauce } = await call("POST", "/api/recipes", recipeBody("Salsa verde", [{ kind: "ingredient", groceryName: "Tomatillos" }]));
+    const { body: sauce } = await call(
+      "POST",
+      "/api/recipes",
+      recipeBody("Salsa verde", [{ kind: "ingredient", groceryName: "Tomatillos" }]),
+    );
     const { body: pozole } = await call(
       "POST",
       "/api/recipes",
@@ -53,7 +76,15 @@ describe("recipes", () => {
         { kind: "ingredient", groceryName: "Green salsa", subRecipeId: sauce.id },
       ]),
     );
-    expect(pozole.ingredients.map((i: { groceryName: string; optional: boolean; subRecipe: unknown }) => [i.groceryName, i.optional, i.subRecipe])).toEqual([
+    expect(
+      pozole.ingredients.map(
+        (i: { groceryName: string; optional: boolean; subRecipe: unknown }) => [
+          i.groceryName,
+          i.optional,
+          i.subRecipe,
+        ],
+      ),
+    ).toEqual([
       ["Hominy", false, null],
       ["Radishes", true, null],
       ["Green salsa", false, { id: sauce.id, name: "Salsa verde" }],
@@ -68,7 +99,13 @@ describe("recipes", () => {
   it("keeps the grocery when the recipe an ingredient is made from is deleted", async () => {
     const { call } = await setup();
     const { body: sauce } = await call("POST", "/api/recipes", recipeBody("Salsa verde", []));
-    const { body: pozole } = await call("POST", "/api/recipes", recipeBody("Pozole", [{ kind: "ingredient", groceryName: "Green salsa", subRecipeId: sauce.id }]));
+    const { body: pozole } = await call(
+      "POST",
+      "/api/recipes",
+      recipeBody("Pozole", [
+        { kind: "ingredient", groceryName: "Green salsa", subRecipeId: sauce.id },
+      ]),
+    );
     expect((await call("DELETE", `/api/recipes/${sauce.id}`)).status).toBe(204);
     const { body } = await call("GET", `/api/recipes/${pozole.id}`);
     expect(body.ingredients[0]).toMatchObject({ groceryName: "Green salsa", subRecipe: null });
@@ -77,8 +114,24 @@ describe("recipes", () => {
   it("won't let a recipe use itself or a recipe that doesn't exist", async () => {
     const { call } = await setup();
     const { body: r } = await call("POST", "/api/recipes", recipeBody("Soup", []));
-    expect((await call("PUT", `/api/recipes/${r.id}`, recipeBody("Soup", [{ kind: "ingredient", groceryName: "Soup", subRecipeId: r.id }]))).status).toBe(409);
-    expect((await call("POST", "/api/recipes", recipeBody("Stew", [{ kind: "ingredient", groceryName: "Stock", subRecipeId: 999 }]))).status).toBe(409);
+    expect(
+      (
+        await call(
+          "PUT",
+          `/api/recipes/${r.id}`,
+          recipeBody("Soup", [{ kind: "ingredient", groceryName: "Soup", subRecipeId: r.id }]),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await call(
+          "POST",
+          "/api/recipes",
+          recipeBody("Stew", [{ kind: "ingredient", groceryName: "Stock", subRecipeId: 999 }]),
+        )
+      ).status,
+    ).toBe(409);
   });
 
   it("rejects a recipe without a name", async () => {
@@ -97,8 +150,15 @@ describe("recipes", () => {
     const { app, cookie, call } = await setup();
     const { body: r } = await call("POST", "/api/recipes", recipeBody("Pic", []));
     const form = new FormData();
-    form.set("photo", new File([new Uint8Array([0xff, 0xd8, 0xff])], "a.jpg", { type: "image/jpeg" }));
-    const res = await app.request(`/api/recipes/${r.id}/photo`, { method: "PUT", body: form, headers: { cookie } });
+    form.set(
+      "photo",
+      new File([new Uint8Array([0xff, 0xd8, 0xff])], "a.jpg", { type: "image/jpeg" }),
+    );
+    const res = await app.request(`/api/recipes/${r.id}/photo`, {
+      method: "PUT",
+      body: form,
+      headers: { cookie },
+    });
     expect(res.status).toBe(200);
     const { photo } = await res.json();
     expect(photo).toMatch(/\.jpg$/);

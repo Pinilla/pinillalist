@@ -51,7 +51,9 @@ describe("login", () => {
 
   it("blocks an address after 10 wrong passwords", async () => {
     const { login } = await setup();
-    for (let i = 0; i < 10; i++) await login("nope");
+    for (let i = 0; i < 10; i++) {
+      await login("nope");
+    }
     expect((await login()).status).toBe(429);
   });
 

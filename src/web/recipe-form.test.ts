@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Recipe } from "../shared/types.ts";
-import { blankForm, formFromRecipe, formToBody, updateForm, type FormAction, type RecipeForm } from "./recipe-form.ts";
+import {
+  blankForm,
+  formFromRecipe,
+  formToBody,
+  updateForm,
+  type FormAction,
+  type RecipeForm,
+} from "./recipe-form.ts";
 
 const chili: Recipe = {
   id: 7,
@@ -18,8 +25,26 @@ const chili: Recipe = {
   rating: 4,
   ingredients: [
     { kind: "heading", id: 1, text: "For the chili" },
-    { kind: "ingredient", id: 2, groceryId: 10, groceryName: "Onion", cookingAmount: "1", preparation: "diced", optional: false, subRecipe: null },
-    { kind: "ingredient", id: 3, groceryId: 11, groceryName: "Hot sauce", cookingAmount: "2 tbsp", preparation: "", optional: true, subRecipe: { id: 9, name: "Hot Honey" } },
+    {
+      kind: "ingredient",
+      id: 2,
+      groceryId: 10,
+      groceryName: "Onion",
+      cookingAmount: "1",
+      preparation: "diced",
+      optional: false,
+      subRecipe: null,
+    },
+    {
+      kind: "ingredient",
+      id: 3,
+      groceryId: 11,
+      groceryName: "Hot sauce",
+      cookingAmount: "2 tbsp",
+      preparation: "",
+      optional: true,
+      subRecipe: { id: 9, name: "Hot Honey" },
+    },
   ],
 };
 
@@ -42,8 +67,22 @@ describe("the recipe form", () => {
       collectionIds: [2],
       ingredients: [
         { kind: "heading", text: "For the chili" },
-        { kind: "ingredient", groceryName: "Onion", cookingAmount: "1", preparation: "diced", optional: false, subRecipeId: null },
-        { kind: "ingredient", groceryName: "Hot sauce", cookingAmount: "2 tbsp", preparation: "", optional: true, subRecipeId: 9 },
+        {
+          kind: "ingredient",
+          groceryName: "Onion",
+          cookingAmount: "1",
+          preparation: "diced",
+          optional: false,
+          subRecipeId: null,
+        },
+        {
+          kind: "ingredient",
+          groceryName: "Hot sauce",
+          cookingAmount: "2 tbsp",
+          preparation: "",
+          optional: true,
+          subRecipeId: 9,
+        },
       ],
     });
   });
@@ -59,13 +98,22 @@ describe("the recipe form", () => {
   });
 
   it("splits steps on blank lines and drops empty ones", () => {
-    const form = apply(blankForm(), [{ type: "setText", field: "steps", value: "Chop.\n\n\n  Fry.  \n \nServe." }]);
+    const form = apply(blankForm(), [
+      { type: "setText", field: "steps", value: "Chop.\n\n\n  Fry.  \n \nServe." },
+    ]);
     expect(formToBody(form).steps).toEqual(["Chop.", "Fry.", "Serve."]);
   });
 
   it("starts a new recipe with one empty ingredient", () => {
     expect(formToBody(blankForm()).ingredients).toEqual([
-      { kind: "ingredient", groceryName: "", cookingAmount: "", preparation: "", optional: false, subRecipeId: null },
+      {
+        kind: "ingredient",
+        groceryName: "",
+        cookingAmount: "",
+        preparation: "",
+        optional: false,
+        subRecipeId: null,
+      },
     ]);
   });
 
@@ -73,20 +121,35 @@ describe("the recipe form", () => {
     let form = apply(blankForm(), [{ type: "addHeading" }]);
     const [ingredient, heading] = form.rows;
     form = apply(form, [
-      { type: "editIngredient", key: ingredient!.key, fields: { groceryName: "Garlic", subRecipeId: "4" } },
+      {
+        type: "editIngredient",
+        key: ingredient!.key,
+        fields: { groceryName: "Garlic", subRecipeId: "4" },
+      },
       { type: "editHeading", key: heading!.key, text: "Sauce" },
       { type: "moveRow", index: 1, by: -1 },
     ]);
     expect(formToBody(form).ingredients).toEqual([
       { kind: "heading", text: "Sauce" },
-      { kind: "ingredient", groceryName: "Garlic", cookingAmount: "", preparation: "", optional: false, subRecipeId: 4 },
+      {
+        kind: "ingredient",
+        groceryName: "Garlic",
+        cookingAmount: "",
+        preparation: "",
+        optional: false,
+        subRecipeId: 4,
+      },
     ]);
     form = apply(form, [{ type: "removeRow", key: heading!.key }]);
     expect(formToBody(form).ingredients).toHaveLength(1);
   });
 
   it("keeps a row in place when it's moved past either end", () => {
-    const form = apply(blankForm(), [{ type: "addHeading" }, { type: "moveRow", index: 0, by: -1 }, { type: "moveRow", index: 1, by: 1 }]);
+    const form = apply(blankForm(), [
+      { type: "addHeading" },
+      { type: "moveRow", index: 0, by: -1 },
+      { type: "moveRow", index: 1, by: 1 },
+    ]);
     expect(form.rows.map((r) => r.kind)).toEqual(["ingredient", "heading"]);
   });
 

@@ -13,14 +13,18 @@ export function hashPassword(password: string): string {
 
 export function verifyPassword(password: string, stored: string): boolean {
   const [scheme, salt, hash] = stored.split("$");
-  if (scheme !== "scrypt" || !salt || !hash) return false;
+  if (scheme !== "scrypt" || !salt || !hash) {
+    return false;
+  }
   const expected = Buffer.from(hash, "base64");
   const actual = scryptSync(password, Buffer.from(salt, "base64"), expected.length);
   return timingSafeEqual(actual, expected);
 }
 
 export function setPassword(db: Db, password: string) {
-  if (password.length < 8) throw new Error("Use at least 8 characters.");
+  if (password.length < 8) {
+    throw new Error("Use at least 8 characters.");
+  }
   setSetting(db, "password_hash", hashPassword(password));
 }
 
@@ -35,7 +39,9 @@ export function cookieSecret(db: Db): string {
 
 export function sessionValue(db: Db): string | null {
   const hash = getSetting(db, "password_hash");
-  if (!hash) return null;
+  if (!hash) {
+    return null;
+  }
   return "household." + createHash("sha256").update(hash).digest("base64url").slice(0, 16);
 }
 

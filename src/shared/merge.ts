@@ -30,7 +30,11 @@ export function mergeIngredients(
   const items = new Map<number, MergedItem>();
   for (const recipe of recipes) {
     for (const need of recipeNeeds(recipe, choices[recipe.id], subRecipes)) {
-      const item = items.get(need.groceryId) ?? { groceryId: need.groceryId, groceryName: groceries.get(need.groceryId)?.name ?? need.groceryName, uses: [] };
+      const item = items.get(need.groceryId) ?? {
+        groceryId: need.groceryId,
+        groceryName: groceries.get(need.groceryId)?.name ?? need.groceryName,
+        uses: [],
+      };
       item.uses.push(need.use);
       items.set(need.groceryId, item);
     }
@@ -41,18 +45,33 @@ export function mergeIngredients(
 type IngredientLine = Extract<IngredientRow, { kind: "ingredient" }>;
 type Need = { groceryId: number; groceryName: string; use: IngredientUse };
 
-function recipeNeeds(recipe: Recipe, choice: RecipeChoice | undefined, subRecipes: Map<number, Recipe>): Need[] {
+function recipeNeeds(
+  recipe: Recipe,
+  choice: RecipeChoice | undefined,
+  subRecipes: Map<number, Recipe>,
+): Need[] {
   return ingredientLines(recipe)
     .filter((row) => !row.optional || row.subRecipe || choice?.optional.includes(row.id))
     .flatMap((row) => lineNeeds(recipe, row, choice, subRecipes));
 }
 
-function lineNeeds(recipe: Recipe, row: IngredientLine, choice: RecipeChoice | undefined, subRecipes: Map<number, Recipe>): Need[] {
-  if (!row.subRecipe) return [need(recipe, recipe.name, row)];
+function lineNeeds(
+  recipe: Recipe,
+  row: IngredientLine,
+  choice: RecipeChoice | undefined,
+  subRecipes: Map<number, Recipe>,
+): Need[] {
+  if (!row.subRecipe) {
+    return [need(recipe, recipe.name, row)];
+  }
   const mode = choice?.subRecipes[row.id] ?? defaultMode(row);
-  if (mode === "have") return [];
+  if (mode === "have") {
+    return [];
+  }
   const inner = subRecipes.get(row.subRecipe.id);
-  if (mode === "make" && inner) return madeRecipeNeeds(inner, recipe);
+  if (mode === "make" && inner) {
+    return madeRecipeNeeds(inner, recipe);
+  }
   return [need(recipe, recipe.name, row)];
 }
 
@@ -66,7 +85,13 @@ function need(recipe: Recipe, recipeName: string, row: IngredientLine): Need {
   return {
     groceryId: row.groceryId,
     groceryName: row.groceryName,
-    use: { recipeId: recipe.id, recipeName, ingredientId: row.id, cookingAmount: row.cookingAmount, preparation: row.preparation },
+    use: {
+      recipeId: recipe.id,
+      recipeName,
+      ingredientId: row.id,
+      cookingAmount: row.cookingAmount,
+      preparation: row.preparation,
+    },
   };
 }
 
@@ -76,6 +101,12 @@ function ingredientLines(recipe: Recipe): IngredientLine[] {
 
 export function subRecipeIds(recipes: Recipe[]): number[] {
   const ids = new Set<number>();
-  for (const r of recipes) for (const row of r.ingredients) if (row.kind === "ingredient" && row.subRecipe) ids.add(row.subRecipe.id);
+  for (const r of recipes) {
+    for (const row of r.ingredients) {
+      if (row.kind === "ingredient" && row.subRecipe) {
+        ids.add(row.subRecipe.id);
+      }
+    }
+  }
   return [...ids];
 }
