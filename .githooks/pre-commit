@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+
+has_unstaged_changes() {
+  git diff --name-only | grep -qxF "$1"
+}
+
+fully_staged_files() {
+  for file in $(git diff --cached --name-only --diff-filter=ACMR); do
+    if ! has_unstaged_changes "$file"; then
+      echo "$file"
+    fi
+  done
+}
+
+restage() {
+  for file in $1; do
+    git add -- "$file"
+  done
+}
+
+if git diff --cached --quiet; then
+  exit 0
+fi
+files=$(fully_staged_files)
+npm run --silent format
+restage "$files"
+npm run --silent check-format

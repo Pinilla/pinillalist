@@ -17,7 +17,8 @@
     "import-anylist": "node scripts/import-anylist.ts",
     "set-password": "node scripts/set-password.ts",
     "format": "oxlint --fix --quiet; oxlint --fix --quiet; prettier --write --log-level warn . && oxlint",
-    "check-format": "oxlint && prettier --check ."
+    "check-format": "oxlint && prettier --check .",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "^5.3.0",

@@ -33,6 +33,8 @@ npm test                      # Vitest: shared logic, AnyList parsing, API
 npm run test:e2e              # Playwright in headless Chromium
 ```
 
+`npm install` also turns on a pre-commit hook, `.githooks/pre-commit`. It runs `npm run format`, stages the fixes in files you staged in full, and stops the commit if `npm run check-format` still fails.
+
 After changing `src/server/db/schema.ts`, run `npm run db:generate` and commit the new file in `drizzle/`.
 
 ## AnyList import
