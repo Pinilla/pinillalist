@@ -20,20 +20,30 @@ describe("catalog", () => {
       size: "1 gal",
     });
     expect(res.status).toBe(200);
-    expect(res.body.product).toMatchObject({ store: "walmart", storeId: "10450114", name: "Great Value Whole Milk", soldBy: "each" });
+    expect(res.body.product).toMatchObject({
+      store: "walmart",
+      storeId: "10450114",
+      name: "Great Value Whole Milk",
+      soldBy: "each",
+    });
   });
 
   it("links a product from a pasted Amazon link", async () => {
     const { call } = await setup();
     const { body: g } = await call("POST", "/api/groceries", { name: "Diapers" });
-    const res = await call("PUT", `/api/groceries/${g.id}/product`, { link: "https://www.amazon.com/x/dp/B07XJ8C8F5/ref=1", name: "Huggies" });
+    const res = await call("PUT", `/api/groceries/${g.id}/product`, {
+      link: "https://www.amazon.com/x/dp/B07XJ8C8F5/ref=1",
+      name: "Huggies",
+    });
     expect(res.body.product).toMatchObject({ store: "amazon", storeId: "B07XJ8C8F5" });
   });
 
   it("rejects a link it can't read", async () => {
     const { call } = await setup();
     const { body: g } = await call("POST", "/api/groceries", { name: "Milk" });
-    const res = await call("PUT", `/api/groceries/${g.id}/product`, { link: "https://www.walmart.com/search?q=milk" });
+    const res = await call("PUT", `/api/groceries/${g.id}/product`, {
+      link: "https://www.walmart.com/search?q=milk",
+    });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/\/ip\//);
   });
@@ -41,7 +51,10 @@ describe("catalog", () => {
   it("only lets Walmart products be sold by the pound", async () => {
     const { call } = await setup();
     const { body: g } = await call("POST", "/api/groceries", { name: "Cheese" });
-    const res = await call("PUT", `/api/groceries/${g.id}/product`, { link: "https://www.amazon.com/dp/B07XJ8C8F5", soldBy: "pound" });
+    const res = await call("PUT", `/api/groceries/${g.id}/product`, {
+      link: "https://www.amazon.com/dp/B07XJ8C8F5",
+      soldBy: "pound",
+    });
     expect(res.status).toBe(400);
   });
 
@@ -51,14 +64,20 @@ describe("catalog", () => {
     expect(g.location).toBeNull();
     const set = await call("PATCH", `/api/groceries/${g.id}`, { location: "fridge" });
     expect(set.body.location).toBe("fridge");
-    expect((await call("PATCH", `/api/groceries/${g.id}`, { name: "Whole milk" })).body.location).toBe("fridge");
-    expect((await call("PATCH", `/api/groceries/${g.id}`, { location: null })).body.location).toBeNull();
+    expect(
+      (await call("PATCH", `/api/groceries/${g.id}`, { name: "Whole milk" })).body.location,
+    ).toBe("fridge");
+    expect(
+      (await call("PATCH", `/api/groceries/${g.id}`, { location: null })).body.location,
+    ).toBeNull();
   });
 
   it("rejects a location that isn't on the list", async () => {
     const { call } = await setup();
     const { body: g } = await call("POST", "/api/groceries", { name: "Milk" });
-    expect((await call("PATCH", `/api/groceries/${g.id}`, { location: "garage" })).status).toBe(400);
+    expect((await call("PATCH", `/api/groceries/${g.id}`, { location: "garage" })).status).toBe(
+      400,
+    );
   });
 
   it("refuses to rename a grocery to one that exists", async () => {
@@ -73,10 +92,14 @@ describe("catalog", () => {
     const { body: recipe } = await call(
       "POST",
       "/api/recipes",
-      recipeBody("Chili", [{ kind: "ingredient", groceryName: "Yellow onion", cookingAmount: "1" }]),
+      recipeBody("Chili", [
+        { kind: "ingredient", groceryName: "Yellow onion", cookingAmount: "1" },
+      ]),
     );
     const yellowId = recipe.ingredients[0].groceryId;
-    await call("PUT", `/api/groceries/${yellowId}/product`, { link: "https://www.walmart.com/ip/51259212" });
+    await call("PUT", `/api/groceries/${yellowId}/product`, {
+      link: "https://www.walmart.com/ip/51259212",
+    });
     const { body: onion } = await call("POST", "/api/groceries", { name: "Onion" });
     const { body: lists } = await call("GET", "/api/lists");
     const { body: list } = await call("POST", "/api/lists", { name: "Groceries" });
@@ -91,14 +114,24 @@ describe("catalog", () => {
     const { body: after } = await call("GET", `/api/recipes/${recipe.id}`);
     expect(after.ingredients[0].groceryName).toBe("Onion");
     const { body: listsAfter } = await call("GET", "/api/lists");
-    expect(listsAfter[0].items).toEqual([expect.objectContaining({ groceryId: onion.id, amount: 3 })]);
-    expect((await call("GET", "/api/groceries")).body.map((g: { name: string }) => g.name)).toEqual(["Onion"]);
+    expect(listsAfter[0].items).toEqual([
+      expect.objectContaining({ groceryId: onion.id, amount: 3 }),
+    ]);
+    expect((await call("GET", "/api/groceries")).body.map((g: { name: string }) => g.name)).toEqual(
+      ["Onion"],
+    );
   });
 
   it("won't delete a grocery a recipe uses", async () => {
     const { call } = await setup();
-    const { body: recipe } = await call("POST", "/api/recipes", recipeBody("Soup", [{ kind: "ingredient", groceryName: "Leek" }]));
-    expect((await call("DELETE", `/api/groceries/${recipe.ingredients[0].groceryId}`)).status).toBe(409);
+    const { body: recipe } = await call(
+      "POST",
+      "/api/recipes",
+      recipeBody("Soup", [{ kind: "ingredient", groceryName: "Leek" }]),
+    );
+    expect((await call("DELETE", `/api/groceries/${recipe.ingredients[0].groceryId}`)).status).toBe(
+      409,
+    );
   });
 
   it("lists merge suggestions and lets the owner keep them apart", async () => {
@@ -108,7 +141,13 @@ describe("catalog", () => {
     const { addMergeSuggestion } = await import("../../src/server/repo.ts");
     addMergeSuggestion(db, a.id, b.id);
     const { body: suggestions } = await call("GET", "/api/merge-suggestions");
-    expect(suggestions).toEqual([{ id: expect.any(Number), a: expect.objectContaining({ name: "Onion" }), b: expect.objectContaining({ name: "Yellow onion" }) }]);
+    expect(suggestions).toEqual([
+      {
+        id: expect.any(Number),
+        a: expect.objectContaining({ name: "Onion" }),
+        b: expect.objectContaining({ name: "Yellow onion" }),
+      },
+    ]);
     await call("POST", `/api/merge-suggestions/${suggestions[0].id}/keep`);
     expect((await call("GET", "/api/merge-suggestions")).body).toEqual([]);
   });

@@ -36,7 +36,9 @@ export function ListsPage({ selectedId }: { selectedId?: number }) {
 export function ListPage({ id }: { id: number }) {
   const list = useList(id);
   const [renaming, setRenaming] = useState(false);
-  if (!list) return <main className="wrap empty">Loading…</main>;
+  if (!list) {
+    return <main className="wrap empty">Loading…</main>;
+  }
   return (
     <Page
       title={list.name}
@@ -56,9 +58,14 @@ export function ListPage({ id }: { id: number }) {
 function ListPanel({ id }: { id: number }) {
   const list = useList(id);
   const [renaming, setRenaming] = useState(false);
-  if (!list) return <p className="empty">Loading…</p>;
+  if (!list) {
+    return <p className="empty">Loading…</p>;
+  }
   return (
-    <Panel title={list.name} actions={<EditToggle open={renaming} onToggle={() => setRenaming((r) => !r)} />}>
+    <Panel
+      title={list.name}
+      actions={<EditToggle open={renaming} onToggle={() => setRenaming((r) => !r)} />}
+    >
       {renaming && <ListSettings list={list} onRenamed={() => setRenaming(false)} />}
       <ListBody list={list} />
     </Panel>
@@ -75,7 +82,9 @@ function useListRequest() {
   return async (request: ListRequest) => {
     try {
       const list = await request();
-      if (list) setList(list);
+      if (list) {
+        setList(list);
+      }
     } catch (err) {
       toast((err as Error).message);
     }
@@ -87,7 +96,12 @@ function ListIndex({ openId }: { openId?: number }) {
   return (
     <div className="list">
       {lists.map((l) => (
-        <Link key={l.id} className={`li${l.id === openId ? " on" : ""}`} href={`/lists/${l.id}`} aria-current={l.id === openId ? "page" : undefined}>
+        <Link
+          key={l.id}
+          className={`li${l.id === openId ? " on" : ""}`}
+          href={`/lists/${l.id}`}
+          aria-current={l.id === openId ? "page" : undefined}
+        >
           <span className="grow">
             <span className="name">{l.name}</span>
             <br />
@@ -102,7 +116,10 @@ function ListIndex({ openId }: { openId?: number }) {
 }
 
 function listSummary(list: GroceryList): string {
-  const status = list.kind === "essentials" ? "Always kept on hand" : `${list.items.filter((i) => !i.done).length} to buy`;
+  const status =
+    list.kind === "essentials"
+      ? "Always kept on hand"
+      : `${list.items.filter((i) => !i.done).length} to buy`;
   return list.isDefault ? `${status}, default list` : status;
 }
 
@@ -125,7 +142,13 @@ function AddListForm() {
 
   return (
     <form className="row nowrap" onSubmit={add}>
-      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="New list name" aria-label="New list name" />
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="New list name"
+        aria-label="New list name"
+      />
       <button className="btn" disabled={!name.trim()}>
         Add
       </button>
@@ -145,7 +168,12 @@ function ListBody({ list }: { list: GroceryList }) {
   const essentials = list.kind === "essentials";
   return (
     <>
-      {essentials && <p className="muted">These are never done. Each Saturday, the stock check asks about each one so you can mark the low ones.</p>}
+      {essentials && (
+        <p className="muted">
+          These are never done. Each Saturday, the stock check asks about each one so you can mark
+          the low ones.
+        </p>
+      )}
       <AddItemForm list={list} />
       <ItemList list={list} />
       <ClearDoneButton list={list} />
@@ -172,7 +200,9 @@ function ListSettings({ list, onRenamed }: { list: GroceryList; onRenamed: () =>
   };
 
   const remove = async () => {
-    if (!confirm(`Delete ${list.name}?`)) return;
+    if (!confirm(`Delete ${list.name}?`)) {
+      return;
+    }
     await api.del(`/api/lists/${list.id}`);
     await reload(["lists"]);
     navigate("/lists");
@@ -181,7 +211,12 @@ function ListSettings({ list, onRenamed }: { list: GroceryList; onRenamed: () =>
   return (
     <section className="storebox">
       <form className="row nowrap" onSubmit={rename}>
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="List name" />
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          aria-label="List name"
+        />
         <button className="btn">Rename</button>
       </form>
       {!fixed && !list.isDefault && (
@@ -220,7 +255,14 @@ function AddItemForm({ list }: { list: GroceryList }) {
         ))}
       </datalist>
       <form className="row nowrap" onSubmit={add}>
-        <input type="text" list="list-grocery-names" value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a grocery" aria-label="Grocery" />
+        <input
+          type="text"
+          list="list-grocery-names"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Add a grocery"
+          aria-label="Grocery"
+        />
         {list.kind !== "essentials" && (
           <input
             type="number"
@@ -244,11 +286,16 @@ function AddItemForm({ list }: { list: GroceryList }) {
 
 function ItemList({ list }: { list: GroceryList }) {
   const request = useListRequest();
-  const tick = (item: ListItem) => () => void request(() => api.patch<GroceryList>(`/api/list-items/${item.id}`, { done: !item.done }));
+  const tick = (item: ListItem) => () =>
+    void request(() => api.patch<GroceryList>(`/api/list-items/${item.id}`, { done: !item.done }));
   return (
     <div className="list">
       {list.items.map((item) => (
-        <ItemRow key={item.id} item={item} onTick={list.kind === "essentials" ? undefined : tick(item)} />
+        <ItemRow
+          key={item.id}
+          item={item}
+          onTick={list.kind === "essentials" ? undefined : tick(item)}
+        />
       ))}
       {list.items.length === 0 && <p className="empty">Nothing on this list.</p>}
     </div>
@@ -260,7 +307,12 @@ function ItemRow({ item, onTick }: { item: ListItem; onTick?: () => void }) {
   return (
     <div className={`li${item.done ? " have" : ""}`}>
       {onTick && (
-        <button className={`tick${item.done ? " on" : ""}`} aria-pressed={item.done} aria-label={`${item.groceryName} done`} onClick={onTick}>
+        <button
+          className={`tick${item.done ? " on" : ""}`}
+          aria-pressed={item.done}
+          aria-label={`${item.groceryName} done`}
+          onClick={onTick}
+        >
           {item.done ? "✓" : ""}
         </button>
       )}
@@ -276,7 +328,11 @@ function ItemRow({ item, onTick }: { item: ListItem; onTick?: () => void }) {
           </>
         )}
       </span>
-      <button className="btn plain small" aria-label={`Remove ${item.groceryName}`} onClick={() => void request(() => api.del<GroceryList>(`/api/list-items/${item.id}`))}>
+      <button
+        className="btn plain small"
+        aria-label={`Remove ${item.groceryName}`}
+        onClick={() => void request(() => api.del<GroceryList>(`/api/list-items/${item.id}`))}
+      >
         Remove
       </button>
     </div>
@@ -286,9 +342,14 @@ function ItemRow({ item, onTick }: { item: ListItem; onTick?: () => void }) {
 function ClearDoneButton({ list }: { list: GroceryList }) {
   const request = useListRequest();
   const done = list.items.filter((i) => i.done).length;
-  if (done === 0) return null;
+  if (done === 0) {
+    return null;
+  }
   return (
-    <button className="btn ghost" onClick={() => void request(() => api.post<GroceryList>(`/api/lists/${list.id}/clear-done`))}>
+    <button
+      className="btn ghost"
+      onClick={() => void request(() => api.post<GroceryList>(`/api/lists/${list.id}/clear-done`))}
+    >
       Clear {done} done item{done === 1 ? "" : "s"}
     </button>
   );

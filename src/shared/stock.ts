@@ -11,7 +11,11 @@ export interface CheckItem {
   start: number;
 }
 
-export function buildStockCheck(merged: MergedItem[], essentials: ListItem[], groceries: Map<number, Grocery>): CheckItem[] {
+export function buildStockCheck(
+  merged: MergedItem[],
+  essentials: ListItem[],
+  groceries: Map<number, Grocery>,
+): CheckItem[] {
   const items = new Map<number, CheckItem>();
   for (const m of merged) {
     items.set(m.groceryId, {
@@ -41,5 +45,9 @@ export function buildStockCheck(merged: MergedItem[], essentials: ListItem[], gr
   }
   const list = [...items.values()];
   const order = new Map(list.map((item, i) => [item.groceryId, i]));
-  return list.sort((a, b) => locationRank(a.location) - locationRank(b.location) || order.get(a.groceryId)! - order.get(b.groceryId)!);
+  return list.sort(
+    (a, b) =>
+      locationRank(a.location) - locationRank(b.location) ||
+      order.get(a.groceryId)! - order.get(b.groceryId)!,
+  );
 }

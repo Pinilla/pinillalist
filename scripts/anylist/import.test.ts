@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { migrateDb, openDb } from "../../src/server/db/index.ts";
-import { getRecipes, listGroceries, listLists, listMergeSuggestions, listRecipes } from "../../src/server/repo.ts";
+import {
+  getRecipes,
+  listGroceries,
+  listLists,
+  listMergeSuggestions,
+  listRecipes,
+} from "../../src/server/repo.ts";
 import { importAnyList } from "./import.ts";
 
 const dirs: string[] = [];
@@ -24,7 +30,12 @@ function fixture() {
             { isHeading: true, name: "Base" },
             { name: "Ground Beef", quantity: "2 lb", note: "", rawIngredient: "2 lb Ground Beef" },
             { name: "onions", quantity: "2", note: "(diced)", rawIngredient: "2 onions (diced)" },
-            { name: "chili powder", quantity: "2 tbsp", note: "", rawIngredient: "2 tbsp chili powder" },
+            {
+              name: "chili powder",
+              quantity: "2 tbsp",
+              note: "",
+              rawIngredient: "2 tbsp chili powder",
+            },
           ],
         },
         {
@@ -40,7 +51,10 @@ function fixture() {
     },
     shoppingListsResponse: {
       newLists: [
-        { name: "Weekly Essentials", items: [{ name: "Toilet Paper", details: "Extra roll in closet" }, { name: "Onion" }] },
+        {
+          name: "Weekly Essentials",
+          items: [{ name: "Toilet Paper", details: "Extra roll in closet" }, { name: "Onion" }],
+        },
         { name: "Quick Things", items: [{ name: "Hang art" }] },
         { name: "Store", items: [{ name: "Kettle" }] },
       ],
@@ -55,14 +69,24 @@ function setup() {
   writeFileSync(path.join(dir, "export", "r1-0.jpg"), "jpeg");
   const db = openDb(path.join(dir, "test.db"));
   migrateDb(db);
-  return { db, opts: { photosFrom: path.join(dir, "export"), photosTo: path.join(dir, "photos") }, dir };
+  return {
+    db,
+    opts: { photosFrom: path.join(dir, "export"), photosTo: path.join(dir, "photos") },
+    dir,
+  };
 }
 
 describe("importAnyList", () => {
   it("imports recipes, collections, photos and the catalog", () => {
     const { db, opts, dir } = setup();
     const report = importAnyList(db, fixture(), opts);
-    expect(report).toMatchObject({ recipes: 2, collections: 1, photos: 1, ingredients: 5, essentials: 2 });
+    expect(report).toMatchObject({
+      recipes: 2,
+      collections: 1,
+      photos: 1,
+      ingredients: 5,
+      essentials: 2,
+    });
 
     const [chili] = getRecipes(db, [listRecipes(db).find((r) => r.name === "Chili")!.id]);
     expect(chili!.photo).toBe("r1-0.jpg");
@@ -71,19 +95,26 @@ describe("importAnyList", () => {
     expect(chili!.cookTime).toBeNull();
     expect(chili!.steps).toEqual(["Brown the beef."]);
     expect(chili!.collectionIds).toHaveLength(1);
-    expect(chili!.ingredients.map((i) => (i.kind === "heading" ? `# ${i.text}` : `${i.groceryName}|${i.cookingAmount}|${i.preparation}`))).toEqual([
-      "# Base",
-      "Ground Beef|2 lb|",
-      "Onions|2|diced",
-      "Chili powder|2 tbsp|",
-    ]);
+    expect(
+      chili!.ingredients.map((i) =>
+        i.kind === "heading"
+          ? `# ${i.text}`
+          : `${i.groceryName}|${i.cookingAmount}|${i.preparation}`,
+      ),
+    ).toEqual(["# Base", "Ground Beef|2 lb|", "Onions|2|diced", "Chili powder|2 tbsp|"]);
   });
 
   it("matches the same grocery across recipes and gives it a unit from its uses", () => {
     const { db, opts } = setup();
     importAnyList(db, fixture(), opts);
     const names = listGroceries(db).map((g) => `${g.name}|${g.unit}`);
-    expect(names).toEqual(["Chili powder|", "Ground Beef|lb", "Onions|", "Toilet Paper|", "Yellow onion|"]);
+    expect(names).toEqual([
+      "Chili powder|",
+      "Ground Beef|lb",
+      "Onions|",
+      "Toilet Paper|",
+      "Yellow onion|",
+    ]);
   });
 
   it("brings over only the Essentials list, with details", () => {
@@ -101,7 +132,9 @@ describe("importAnyList", () => {
   it("suggests near-duplicates for the owner to review", () => {
     const { db, opts } = setup();
     importAnyList(db, fixture(), opts);
-    expect(listMergeSuggestions(db).map((s) => [s.a.name, s.b.name])).toEqual([["Onions", "Yellow onion"]]);
+    expect(listMergeSuggestions(db).map((s) => [s.a.name, s.b.name])).toEqual([
+      ["Onions", "Yellow onion"],
+    ]);
   });
 
   it("refuses to run twice", () => {

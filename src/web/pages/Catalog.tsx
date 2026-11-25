@@ -1,10 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { parseProductLink } from "../../shared/links.ts";
-import { LOCATIONS, locationLabel, locationRank, type LocationKey } from "../../shared/locations.ts";
+import {
+  LOCATIONS,
+  locationLabel,
+  locationRank,
+  type LocationKey,
+} from "../../shared/locations.ts";
 import { STORE_NAMES, type Grocery } from "../../shared/types.ts";
 import { api } from "../api.ts";
-import { Page, Panel, StoreBadge, productLabel, productUrl, toast, useBusy, useDesktop } from "../components.tsx";
+import {
+  Page,
+  Panel,
+  StoreBadge,
+  productLabel,
+  productUrl,
+  toast,
+  useBusy,
+  useDesktop,
+} from "../components.tsx";
 import { useData } from "../data.tsx";
 
 type Usage = Record<number, { recipes: number; lists: number }>;
@@ -34,7 +48,11 @@ export function CatalogPage({ selectedId }: { selectedId?: number }) {
   return (
     <Page title="Catalog">
       <CatalogIntro />
-      {desktop ? <CatalogTable filter={filter} usage={usage} selectedId={selectedId} /> : <CatalogList filter={filter} usage={usage} />}
+      {desktop ? (
+        <CatalogTable filter={filter} usage={usage} selectedId={selectedId} />
+      ) : (
+        <CatalogList filter={filter} usage={usage} />
+      )}
     </Page>
   );
 }
@@ -42,7 +60,9 @@ export function CatalogPage({ selectedId }: { selectedId?: number }) {
 export function GroceryPage({ id }: { id: number }) {
   const { groceryById } = useData();
   const grocery = groceryById.get(id);
-  if (!grocery) return <main className="wrap empty">Loading…</main>;
+  if (!grocery) {
+    return <main className="wrap empty">Loading…</main>;
+  }
   return (
     <Page
       title={grocery.name}
@@ -83,10 +103,14 @@ export function DuplicatesPage() {
         </Link>
       }
     >
-      <p className="muted">The AnyList import found these pairs. Merge the ones that are the same thing to buy.</p>
+      <p className="muted">
+        The AnyList import found these pairs. Merge the ones that are the same thing to buy.
+      </p>
       {suggestions === null && <p className="empty">Loading…</p>}
       {suggestions?.length === 0 && <p className="empty">Nothing left to review.</p>}
-      {suggestions?.map((s) => <SuggestionCard key={s.id} suggestion={s} usage={usage} busy={busy} onAct={act} />)}
+      {suggestions?.map((s) => (
+        <SuggestionCard key={s.id} suggestion={s} usage={usage} busy={busy} onAct={act} />
+      ))}
     </Page>
   );
 }
@@ -94,7 +118,10 @@ export function DuplicatesPage() {
 function useUsage(): Usage {
   const [usage, setUsage] = useState<Usage>({});
   useEffect(() => {
-    api.get<Usage>("/api/groceries/usage").then(setUsage).catch(() => {});
+    api
+      .get<Usage>("/api/groceries/usage")
+      .then(setUsage)
+      .catch(() => {});
   }, []);
   return usage;
 }
@@ -115,15 +142,21 @@ function useCatalogFilter() {
   const [query, setQuery] = useState("");
   const [onlyUnlinked, setOnlyUnlinked] = useState(false);
   const q = query.trim().toLowerCase();
-  const shown = groceries.filter((g) => (!q || g.name.toLowerCase().includes(q)) && (!onlyUnlinked || !g.product));
+  const shown = groceries.filter(
+    (g) => (!q || g.name.toLowerCase().includes(q)) && (!onlyUnlinked || !g.product),
+  );
   return { query, setQuery, onlyUnlinked, setOnlyUnlinked, shown, total: groceries.length };
 }
 
 type CatalogFilter = ReturnType<typeof useCatalogFilter>;
 
 function usageText(u: { recipes: number; lists: number } | undefined): string {
-  if (!u) return "Not used";
-  return [u.recipes && plural(u.recipes, "recipe"), u.lists && plural(u.lists, "list")].filter(Boolean).join(", ");
+  if (!u) {
+    return "Not used";
+  }
+  return [u.recipes && plural(u.recipes, "recipe"), u.lists && plural(u.lists, "list")]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function plural(count: number, noun: string): string {
@@ -140,7 +173,11 @@ function CatalogIntro() {
         {groceries.length} groceries, {linked} linked to a product.
       </p>
       {suggestions > 0 && (
-        <Link className="note info" href="/catalog/duplicates" style={{ textDecoration: "none", color: "inherit" }}>
+        <Link
+          className="note info"
+          href="/catalog/duplicates"
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
           <strong>{plural(suggestions, "possible duplicate")}</strong> to merge or keep apart →
         </Link>
       )}
@@ -150,14 +187,24 @@ function CatalogIntro() {
 
 function SearchBox({ filter }: { filter: CatalogFilter }) {
   return (
-    <input type="search" placeholder="Search groceries" value={filter.query} onChange={(e) => filter.setQuery(e.target.value)} aria-label="Search groceries" />
+    <input
+      type="search"
+      placeholder="Search groceries"
+      value={filter.query}
+      onChange={(e) => filter.setQuery(e.target.value)}
+      aria-label="Search groceries"
+    />
   );
 }
 
 function UnlinkedToggle({ filter }: { filter: CatalogFilter }) {
   return (
     <label className="check">
-      <input type="checkbox" checked={filter.onlyUnlinked} onChange={(e) => filter.setOnlyUnlinked(e.target.checked)} />
+      <input
+        type="checkbox"
+        checked={filter.onlyUnlinked}
+        onChange={(e) => filter.setOnlyUnlinked(e.target.checked)}
+      />
       Only groceries without a product
     </label>
   );
@@ -194,7 +241,15 @@ function groceryFacts(g: Grocery, usage: Usage): string {
   return `${where}${counted}${usageText(usage[g.id])}`;
 }
 
-function CatalogTable({ filter, usage, selectedId }: { filter: CatalogFilter; usage: Usage; selectedId?: number }) {
+function CatalogTable({
+  filter,
+  usage,
+  selectedId,
+}: {
+  filter: CatalogFilter;
+  usage: Usage;
+  selectedId?: number;
+}) {
   const [, navigate] = useLocation();
   const [order, setOrder] = useState<SortOrder>({ key: "name", direction: "ascending" });
   const rows = sortGroceries(filter.shown, order, usage);
@@ -203,7 +258,9 @@ function CatalogTable({ filter, usage, selectedId }: { filter: CatalogFilter; us
       <div className="toolbar row">
         <SearchBox filter={filter} />
         <UnlinkedToggle filter={filter} />
-        {filter.shown.length !== filter.total && <span className="muted small">{filter.shown.length} shown</span>}
+        {filter.shown.length !== filter.total && (
+          <span className="muted small">{filter.shown.length} shown</span>
+        )}
       </div>
       <div className={`split${selectedId === undefined ? "" : " open"}`}>
         <div className="table-wrap">
@@ -218,7 +275,13 @@ function CatalogTable({ filter, usage, selectedId }: { filter: CatalogFilter; us
             </thead>
             <tbody>
               {rows.map((g) => (
-                <GroceryRow key={g.id} grocery={g} usage={usage} selected={g.id === selectedId} onOpen={() => navigate(`/catalog/${g.id}`)} />
+                <GroceryRow
+                  key={g.id}
+                  grocery={g}
+                  usage={usage}
+                  selected={g.id === selectedId}
+                  onOpen={() => navigate(`/catalog/${g.id}`)}
+                />
               ))}
             </tbody>
           </table>
@@ -234,7 +297,15 @@ function CatalogTable({ filter, usage, selectedId }: { filter: CatalogFilter; us
   );
 }
 
-function SortableHeader({ column, order, onSort }: { column: { key: SortKey; label: string }; order: SortOrder; onSort: (order: SortOrder) => void }) {
+function SortableHeader({
+  column,
+  order,
+  onSort,
+}: {
+  column: { key: SortKey; label: string };
+  order: SortOrder;
+  onSort: (order: SortOrder) => void;
+}) {
   const on = order.key === column.key;
   const next: SortDirection = on && order.direction === "ascending" ? "descending" : "ascending";
   return (
@@ -247,7 +318,17 @@ function SortableHeader({ column, order, onSort }: { column: { key: SortKey; lab
   );
 }
 
-function GroceryRow({ grocery, usage, selected, onOpen }: { grocery: Grocery; usage: Usage; selected: boolean; onOpen: () => void }) {
+function GroceryRow({
+  grocery,
+  usage,
+  selected,
+  onOpen,
+}: {
+  grocery: Grocery;
+  usage: Usage;
+  selected: boolean;
+  onOpen: () => void;
+}) {
   return (
     <tr className={selected ? "on" : ""} onClick={onOpen}>
       <td>
@@ -256,9 +337,13 @@ function GroceryRow({ grocery, usage, selected, onOpen }: { grocery: Grocery; us
         </Link>
       </td>
       <td>{grocery.unit}</td>
-      <td>{grocery.location ? locationLabel(grocery.location) : <span className="muted">None</span>}</td>
+      <td>
+        {grocery.location ? locationLabel(grocery.location) : <span className="muted">None</span>}
+      </td>
       <td>{usageText(usage[grocery.id])}</td>
-      <td>{grocery.product ? productLabel(grocery.product) : <span className="muted">None</span>}</td>
+      <td>
+        {grocery.product ? productLabel(grocery.product) : <span className="muted">None</span>}
+      </td>
       <td>
         <StoreBadge product={grocery.product} />
       </td>
@@ -275,8 +360,12 @@ function sortGroceries(list: Grocery[], order: SortOrder, usage: Usage): Grocery
 type Comparator = (a: Grocery, b: Grocery, flip: number) => number;
 
 function comparatorFor(key: SortKey, usage: Usage): Comparator {
-  if (key === "usage") return (a, b, flip) => flip * (usesOf(b, usage) - usesOf(a, usage));
-  if (key === "location") return compareLocations;
+  if (key === "usage") {
+    return (a, b, flip) => flip * (usesOf(b, usage) - usesOf(a, usage));
+  }
+  if (key === "location") {
+    return compareLocations;
+  }
   return (a, b, flip) => compareText(sortText(a, key), sortText(b, key), flip);
 }
 
@@ -285,25 +374,35 @@ function usesOf(g: Grocery, usage: Usage): number {
 }
 
 function compareLocations(a: Grocery, b: Grocery, flip: number): number {
-  if (!a.location !== !b.location) return a.location ? -1 : 1;
+  if (!a.location !== !b.location) {
+    return a.location ? -1 : 1;
+  }
   return flip * (locationRank(a.location) - locationRank(b.location));
 }
 
 function compareText(x: string, y: string, flip: number): number {
-  if (!x !== !y) return x ? -1 : 1;
+  if (!x !== !y) {
+    return x ? -1 : 1;
+  }
   return flip * x.localeCompare(y);
 }
 
 function sortText(g: Grocery, key: SortKey): string {
-  if (key === "unit") return g.unit;
-  if (key === "product") return g.product ? productLabel(g.product) : "";
+  if (key === "unit") {
+    return g.unit;
+  }
+  if (key === "product") {
+    return g.product ? productLabel(g.product) : "";
+  }
   return g.name;
 }
 
 function GroceryPanel({ id }: { id: number }) {
   const { groceryById } = useData();
   const grocery = groceryById.get(id);
-  if (!grocery) return <p className="empty">Loading…</p>;
+  if (!grocery) {
+    return <p className="empty">Loading…</p>;
+  }
   return (
     <Panel
       title={grocery.name}
@@ -355,14 +454,22 @@ function ProductSection({ grocery }: { grocery: Grocery }) {
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      const body = { link: link.trim() || (product ? productUrl(product) : ""), name: productName, size, soldBy: byPound ? "pound" : "each" };
+      const body = {
+        link: link.trim() || (product ? productUrl(product) : ""),
+        name: productName,
+        size,
+        soldBy: byPound ? "pound" : "each",
+      };
       setGrocery(await api.put<Grocery>(`/api/groceries/${grocery.id}/product`, body));
       setLink("");
       toast("Product linked.");
     });
   };
 
-  const unlink = () => void run(async () => setGrocery(await api.del<Grocery>(`/api/groceries/${grocery.id}/product`)));
+  const unlink = () =>
+    void run(async () =>
+      setGrocery(await api.del<Grocery>(`/api/groceries/${grocery.id}/product`)),
+    );
 
   return (
     <section className="storebox">
@@ -370,17 +477,36 @@ function ProductSection({ grocery }: { grocery: Grocery }) {
       <LinkedProduct grocery={grocery} />
       <form className="stack" onSubmit={save}>
         <label className="field">
-          <span>{product ? "Paste a new product link" : "Paste a Walmart or Amazon product link"}</span>
-          <input type="text" inputMode="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://www.walmart.com/ip/…" />
+          <span>
+            {product ? "Paste a new product link" : "Paste a Walmart or Amazon product link"}
+          </span>
+          <input
+            type="text"
+            inputMode="url"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder="https://www.walmart.com/ip/…"
+          />
         </label>
         {parsed && (
-          <p className={`small ${parsed.ok ? "muted" : "warn-text"}`}>{parsed.ok ? `${STORE_NAMES[parsed.store]} product ${parsed.storeId}` : parsed.error}</p>
+          <p className={`small ${parsed.ok ? "muted" : "warn-text"}`}>
+            {parsed.ok ? `${STORE_NAMES[parsed.store]} product ${parsed.storeId}` : parsed.error}
+          </p>
         )}
-        <TextField label="Product name" value={productName} onChange={setProductName} placeholder="Great Value Whole Milk" />
+        <TextField
+          label="Product name"
+          value={productName}
+          onChange={setProductName}
+          placeholder="Great Value Whole Milk"
+        />
         <TextField label="Size" value={size} onChange={setSize} placeholder="1 gal" />
         {store === "walmart" && (
           <label className="check">
-            <input type="checkbox" checked={byPound} onChange={(e) => setByPound(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={byPound}
+              onChange={(e) => setByPound(e.target.checked)}
+            />
             Sold by the pound (deli sliced to order)
           </label>
         )}
@@ -401,7 +527,9 @@ function ProductSection({ grocery }: { grocery: Grocery }) {
 
 function LinkedProduct({ grocery }: { grocery: Grocery }) {
   const product = grocery.product;
-  if (!product) return <p className="muted">No product linked. The weekly order lists it to add by hand.</p>;
+  if (!product) {
+    return <p className="muted">No product linked. The weekly order lists it to add by hand.</p>;
+  }
   return (
     <div className="row nowrap">
       <span className="grow">
@@ -412,18 +540,38 @@ function LinkedProduct({ grocery }: { grocery: Grocery }) {
           {product.soldBy === "pound" && ", sold by the pound"}
         </span>
       </span>
-      <a className="btn small ghost" href={productUrl(product)} target="_blank" rel="noopener noreferrer">
+      <a
+        className="btn small ghost"
+        href={productUrl(product)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         Open
       </a>
     </div>
   );
 }
 
-function TextField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
   return (
     <label className="field">
       <span>{label}</span>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
     </label>
   );
 }
@@ -444,7 +592,13 @@ function DetailsForm({ grocery }: { grocery: Grocery }) {
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      setGrocery(await api.patch<Grocery>(`/api/groceries/${grocery.id}`, { name, unit, location: location || null }));
+      setGrocery(
+        await api.patch<Grocery>(`/api/groceries/${grocery.id}`, {
+          name,
+          unit,
+          location: location || null,
+        }),
+      );
       toast("Saved.");
     });
   };
@@ -456,11 +610,20 @@ function DetailsForm({ grocery }: { grocery: Grocery }) {
         <span>Name</span>
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
       </label>
-      <TextField label="Unit" value={unit} onChange={setUnit} placeholder="Leave empty to count by name" />
+      <TextField
+        label="Unit"
+        value={unit}
+        onChange={setUnit}
+        placeholder="Leave empty to count by name"
+      />
       <LocationField value={location} onChange={setLocation} />
-      <p className="small muted">Where it's kept at home. The stock check walks the house in this order, and groceries without a location come last.</p>
       <p className="small muted">
-        The unit you count at home and buy in, such as lb, can or pack. Leave it empty to count {grocery.name.toLowerCase()} one by one.
+        Where it's kept at home. The stock check walks the house in this order, and groceries
+        without a location come last.
+      </p>
+      <p className="small muted">
+        The unit you count at home and buy in, such as lb, can or pack. Leave it empty to count{" "}
+        {grocery.name.toLowerCase()} one by one.
       </p>
       <button className="btn" disabled={busy}>
         Save details
@@ -469,7 +632,13 @@ function DetailsForm({ grocery }: { grocery: Grocery }) {
   );
 }
 
-function LocationField({ value, onChange }: { value: LocationKey | ""; onChange: (value: LocationKey | "") => void }) {
+function LocationField({
+  value,
+  onChange,
+}: {
+  value: LocationKey | "";
+  onChange: (value: LocationKey | "") => void;
+}) {
   return (
     <label className="field">
       <span>Location</span>
@@ -495,8 +664,16 @@ function MergeForm({ grocery }: { grocery: Grocery }) {
 
   const merge = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!target) return;
-    if (!confirm(`Merge ${grocery.name} into ${target.name}? Recipes and lists will use ${target.name}.`)) return;
+    if (!target) {
+      return;
+    }
+    if (
+      !confirm(
+        `Merge ${grocery.name} into ${target.name}? Recipes and lists will use ${target.name}.`,
+      )
+    ) {
+      return;
+    }
     void run(async () => {
       await api.post(`/api/groceries/${grocery.id}/merge`, { intoId: target.id });
       await reload(["groceries", "lists"]);
@@ -507,13 +684,22 @@ function MergeForm({ grocery }: { grocery: Grocery }) {
   return (
     <form className="storebox" onSubmit={merge}>
       <h2>Merge into another grocery</h2>
-      <p className="small muted">For duplicates like "Yellow onion" and "Onion". Recipes and lists move to the other grocery.</p>
+      <p className="small muted">
+        For duplicates like "Yellow onion" and "Onion". Recipes and lists move to the other grocery.
+      </p>
       <datalist id="merge-names">
         {others.map((g) => (
           <option key={g.id} value={g.name} />
         ))}
       </datalist>
-      <input type="text" list="merge-names" value={mergeInto} onChange={(e) => setMergeInto(e.target.value)} placeholder="Grocery name" aria-label="Grocery to merge into" />
+      <input
+        type="text"
+        list="merge-names"
+        value={mergeInto}
+        onChange={(e) => setMergeInto(e.target.value)}
+        placeholder="Grocery name"
+        aria-label="Grocery to merge into"
+      />
       <button className="btn ghost" disabled={busy || !target}>
         Merge
       </button>
@@ -526,7 +712,9 @@ function DeleteGroceryButton({ grocery }: { grocery: Grocery }) {
   const [, navigate] = useLocation();
   const { busy, run } = useBusy();
   const remove = () => {
-    if (!confirm(`Delete ${grocery.name} from the catalog?`)) return;
+    if (!confirm(`Delete ${grocery.name} from the catalog?`)) {
+      return;
+    }
     void run(async () => {
       await api.del(`/api/groceries/${grocery.id}`);
       await reload(["groceries"]);
@@ -552,7 +740,8 @@ function SuggestionCard({
   onAct: (request: () => Promise<unknown>) => void;
 }) {
   const { id, a, b } = suggestion;
-  const merge = (from: Grocery, into: Grocery) => onAct(() => api.post(`/api/groceries/${from.id}/merge`, { intoId: into.id }));
+  const merge = (from: Grocery, into: Grocery) =>
+    onAct(() => api.post(`/api/groceries/${from.id}/merge`, { intoId: into.id }));
   return (
     <section className="storebox dup">
       <div className="two">
@@ -571,7 +760,11 @@ function SuggestionCard({
         <button className="btn small" disabled={busy} onClick={() => merge(a, b)}>
           Merge into {b.name}
         </button>
-        <button className="btn small ghost" disabled={busy} onClick={() => onAct(() => api.post(`/api/merge-suggestions/${id}/keep`))}>
+        <button
+          className="btn small ghost"
+          disabled={busy}
+          onClick={() => onAct(() => api.post(`/api/merge-suggestions/${id}/keep`))}
+        >
           Keep apart
         </button>
       </div>

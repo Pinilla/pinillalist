@@ -21,7 +21,9 @@ export interface CartPlan {
 }
 
 function cartQuantity(line: OrderLine): number {
-  if (line.product?.soldBy === "pound") return Math.round(line.quantity * 100) / 100;
+  if (line.product?.soldBy === "pound") {
+    return Math.round(line.quantity * 100) / 100;
+  }
   return Math.max(1, Math.round(line.quantity));
 }
 
@@ -31,12 +33,17 @@ export function buildCartPlan(lines: OrderLine[]): CartPlan {
   const byStore = new Map<Store, OrderLine[]>();
 
   for (const line of lines) {
-    if (!(line.quantity > 0)) continue;
+    if (!(line.quantity > 0)) {
+      continue;
+    }
     if (!line.product) {
       unlinked.push(line);
       continue;
     }
-    const valid = line.product.store === "walmart" ? WALMART_ID.test(line.product.storeId) : ASIN.test(line.product.storeId);
+    const valid =
+      line.product.store === "walmart"
+        ? WALMART_ID.test(line.product.storeId)
+        : ASIN.test(line.product.storeId);
     if (!valid) {
       invalid.push(line);
       continue;
@@ -49,7 +56,9 @@ export function buildCartPlan(lines: OrderLine[]): CartPlan {
   const carts: StoreCart[] = [];
   for (const store of ["walmart", "amazon"] as const) {
     const storeLines = byStore.get(store);
-    if (!storeLines) continue;
+    if (!storeLines) {
+      continue;
+    }
     const totals = new Map<string, number>();
     for (const line of storeLines) {
       const id = line.product!.storeId;

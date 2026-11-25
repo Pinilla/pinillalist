@@ -5,7 +5,16 @@ import type { IngredientRow, Recipe, RecipeSummary } from "../../shared/types.ts
 import { api, photoUrl } from "../api.ts";
 import { CollectionChips, Page, Thumb, minutes, toast } from "../components.tsx";
 import { useData, useRecipe } from "../data.tsx";
-import { blankForm, formFromRecipe, formToBody, updateForm, type FormAction, type FormRow, type IngredientFields, type RecipeForm } from "../recipe-form.ts";
+import {
+  blankForm,
+  formFromRecipe,
+  formToBody,
+  updateForm,
+  type FormAction,
+  type FormRow,
+  type IngredientFields,
+  type RecipeForm,
+} from "../recipe-form.ts";
 
 type FormDispatch = (action: FormAction) => void;
 
@@ -22,7 +31,13 @@ export function RecipesPage() {
         </Link>
       }
     >
-      <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
+      <input
+        type="search"
+        placeholder="Search recipes"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search recipes"
+      />
       <CollectionChips collections={collections} chosen={chosen} onChange={setChosen} />
       <RecipeTiles recipes={filterRecipes(recipes, chosen, query)} />
     </Page>
@@ -31,8 +46,12 @@ export function RecipesPage() {
 
 export function RecipePage({ id }: { id: number }) {
   const { recipe, error } = useRecipe(id);
-  if (error) return <Page title="Recipe">{error}</Page>;
-  if (!recipe) return <main className="wrap empty">Loading…</main>;
+  if (error) {
+    return <Page title="Recipe">{error}</Page>;
+  }
+  if (!recipe) {
+    return <main className="wrap empty">Loading…</main>;
+  }
   return (
     <Page
       title={recipe.name}
@@ -71,14 +90,22 @@ export function RecipePage({ id }: { id: number }) {
 
 export function RecipeEditPage({ id }: { id: number | null }) {
   const { recipe, error } = useRecipe(id);
-  if (id === null) return <RecipeEditor id={null} initial={blankForm()} />;
-  if (error) return <Page title="Recipe">{error}</Page>;
-  if (!recipe) return <main className="wrap empty">Loading…</main>;
+  if (id === null) {
+    return <RecipeEditor id={null} initial={blankForm()} />;
+  }
+  if (error) {
+    return <Page title="Recipe">{error}</Page>;
+  }
+  if (!recipe) {
+    return <main className="wrap empty">Loading…</main>;
+  }
   return <RecipeEditor id={id} initial={formFromRecipe(recipe)} />;
 }
 
 function RecipeTiles({ recipes }: { recipes: RecipeSummary[] }) {
-  if (recipes.length === 0) return <p className="empty">No recipes here.</p>;
+  if (recipes.length === 0) {
+    return <p className="empty">No recipes here.</p>;
+  }
   return (
     <div className="grid">
       {recipes.map((r) => (
@@ -94,7 +121,9 @@ function RecipeTiles({ recipes }: { recipes: RecipeSummary[] }) {
 function CollectionBadges({ recipe }: { recipe: Recipe }) {
   const { collections } = useData();
   const mine = collections.filter((c) => recipe.collectionIds.includes(c.id));
-  if (mine.length === 0) return null;
+  if (mine.length === 0) {
+    return null;
+  }
   return (
     <div className="row">
       {mine.map((c) => (
@@ -108,7 +137,9 @@ function CollectionBadges({ recipe }: { recipe: Recipe }) {
 
 function RecipeFacts({ recipe }: { recipe: Recipe }) {
   const facts = recipeFacts(recipe);
-  if (facts.length === 0) return null;
+  if (facts.length === 0) {
+    return null;
+  }
   return <p className="muted">{facts.join(" · ")}</p>;
 }
 
@@ -150,7 +181,9 @@ function IngredientLine({ row }: { row: IngredientRow }) {
 }
 
 function StepList({ steps }: { steps: string[] }) {
-  if (steps.length === 0) return null;
+  if (steps.length === 0) {
+    return null;
+  }
   return (
     <>
       <h2>Steps</h2>
@@ -164,7 +197,9 @@ function StepList({ steps }: { steps: string[] }) {
 }
 
 function RecipeNote({ note }: { note: string }) {
-  if (!note) return null;
+  if (!note) {
+    return null;
+  }
   return (
     <>
       <h2>Note</h2>
@@ -175,7 +210,9 @@ function RecipeNote({ note }: { note: string }) {
 
 function SourceLine({ recipe }: { recipe: Recipe }) {
   const { sourceName, sourceUrl } = recipe;
-  if (!sourceName && !sourceUrl) return null;
+  if (!sourceName && !sourceUrl) {
+    return null;
+  }
   return (
     <p className="small muted">
       Source:{" "}
@@ -227,13 +264,22 @@ function RecipeEditor({ id, initial }: { id: number | null; initial: RecipeForm 
       <form className="stack" onSubmit={save}>
         <label className="field">
           <span>Name</span>
-          <input type="text" value={form.name} onChange={(e) => dispatch({ type: "setText", field: "name", value: e.target.value })} required />
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => dispatch({ type: "setText", field: "name", value: e.target.value })}
+            required
+          />
         </label>
         <CollectionPicker chosen={form.collectionIds} dispatch={dispatch} />
         <TimeAndServingFields form={form} dispatch={dispatch} />
         <label className="field">
           <span>Photo</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+          />
         </label>
         <IngredientEditor recipeId={id} rows={form.rows} dispatch={dispatch} />
         <NotesFields form={form} dispatch={dispatch} />
@@ -246,10 +292,19 @@ function RecipeEditor({ id, initial }: { id: number | null; initial: RecipeForm 
   );
 }
 
-async function saveRecipe(id: number | null, form: RecipeForm, photo: File | null): Promise<Recipe> {
+async function saveRecipe(
+  id: number | null,
+  form: RecipeForm,
+  photo: File | null,
+): Promise<Recipe> {
   const body = formToBody(form);
-  const saved = id === null ? await api.post<Recipe>("/api/recipes", body) : await api.put<Recipe>(`/api/recipes/${id}`, body);
-  if (!photo) return saved;
+  const saved =
+    id === null
+      ? await api.post<Recipe>("/api/recipes", body)
+      : await api.put<Recipe>(`/api/recipes/${id}`, body);
+  if (!photo) {
+    return saved;
+  }
   const upload = new FormData();
   upload.set("photo", photo);
   return api.put<Recipe>(`/api/recipes/${saved.id}/photo`, upload);
@@ -264,7 +319,13 @@ function CollectionPicker({ chosen, dispatch }: { chosen: number[]; dispatch: Fo
         {collections.map((c) => {
           const on = chosen.includes(c.id);
           return (
-            <button type="button" key={c.id} className={`chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => dispatch({ type: "toggleCollection", collectionId: c.id })}>
+            <button
+              type="button"
+              key={c.id}
+              className={`chip${on ? " on" : ""}`}
+              aria-pressed={on}
+              onClick={() => dispatch({ type: "toggleCollection", collectionId: c.id })}
+            >
               {c.name}
             </button>
           );
@@ -275,18 +336,32 @@ function CollectionPicker({ chosen, dispatch }: { chosen: number[]; dispatch: Fo
 }
 
 function TimeAndServingFields({ form, dispatch }: { form: RecipeForm; dispatch: FormDispatch }) {
-  const setText = (field: "prepMinutes" | "cookMinutes" | "servings") => (e: React.ChangeEvent<HTMLInputElement>) =>
-    dispatch({ type: "setText", field, value: e.target.value });
+  const setText =
+    (field: "prepMinutes" | "cookMinutes" | "servings") =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      dispatch({ type: "setText", field, value: e.target.value });
   return (
     <>
       <div className="two">
         <label className="field">
           <span>Prep minutes</span>
-          <input type="number" inputMode="numeric" min="0" value={form.prepMinutes} onChange={setText("prepMinutes")} />
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            value={form.prepMinutes}
+            onChange={setText("prepMinutes")}
+          />
         </label>
         <label className="field">
           <span>Cook minutes</span>
-          <input type="number" inputMode="numeric" min="0" value={form.cookMinutes} onChange={setText("cookMinutes")} />
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            value={form.cookMinutes}
+            onChange={setText("cookMinutes")}
+          />
         </label>
       </div>
       <div className="two">
@@ -296,7 +371,15 @@ function TimeAndServingFields({ form, dispatch }: { form: RecipeForm; dispatch: 
         </label>
         <label className="field">
           <span>Rating</span>
-          <select value={form.rating ?? ""} onChange={(e) => dispatch({ type: "setRating", rating: e.target.value ? Number(e.target.value) : null })}>
+          <select
+            value={form.rating ?? ""}
+            onChange={(e) =>
+              dispatch({
+                type: "setRating",
+                rating: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          >
             <option value="">None</option>
             {[1, 2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
@@ -310,7 +393,15 @@ function TimeAndServingFields({ form, dispatch }: { form: RecipeForm; dispatch: 
   );
 }
 
-function IngredientEditor({ recipeId, rows, dispatch }: { recipeId: number | null; rows: FormRow[]; dispatch: FormDispatch }) {
+function IngredientEditor({
+  recipeId,
+  rows,
+  dispatch,
+}: {
+  recipeId: number | null;
+  rows: FormRow[];
+  dispatch: FormDispatch;
+}) {
   const { groceries } = useData();
   return (
     <>
@@ -324,19 +415,39 @@ function IngredientEditor({ recipeId, rows, dispatch }: { recipeId: number | nul
         {rows.map((row, i) => (
           <div key={row.key} className="ing-row">
             {row.kind === "heading" ? (
-              <HeadingFields text={row.text} onChange={(text) => dispatch({ type: "editHeading", key: row.key, text })} />
+              <HeadingFields
+                text={row.text}
+                onChange={(text) => dispatch({ type: "editHeading", key: row.key, text })}
+              />
             ) : (
-              <IngredientFieldset row={row} recipeId={recipeId} onChange={(fields) => dispatch({ type: "editIngredient", key: row.key, fields })} />
+              <IngredientFieldset
+                row={row}
+                recipeId={recipeId}
+                onChange={(fields) => dispatch({ type: "editIngredient", key: row.key, fields })}
+              />
             )}
-            <RowControls index={i} count={rows.length} onMove={(by) => dispatch({ type: "moveRow", index: i, by })} onRemove={() => dispatch({ type: "removeRow", key: row.key })} />
+            <RowControls
+              index={i}
+              count={rows.length}
+              onMove={(by) => dispatch({ type: "moveRow", index: i, by })}
+              onRemove={() => dispatch({ type: "removeRow", key: row.key })}
+            />
           </div>
         ))}
       </div>
       <div className="row">
-        <button type="button" className="btn ghost small" onClick={() => dispatch({ type: "addIngredient" })}>
+        <button
+          type="button"
+          className="btn ghost small"
+          onClick={() => dispatch({ type: "addIngredient" })}
+        >
           Add ingredient
         </button>
-        <button type="button" className="btn ghost small" onClick={() => dispatch({ type: "addHeading" })}>
+        <button
+          type="button"
+          className="btn ghost small"
+          onClick={() => dispatch({ type: "addHeading" })}
+        >
           Add heading
         </button>
       </div>
@@ -348,7 +459,12 @@ function HeadingFields({ text, onChange }: { text: string; onChange: (text: stri
   return (
     <label className="field full heading-field">
       <span>Section heading</span>
-      <input type="text" value={text} onChange={(e) => onChange(e.target.value)} placeholder="For the sauce" />
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="For the sauce"
+      />
     </label>
   );
 }
@@ -366,28 +482,60 @@ function IngredientFieldset({
     <>
       <label className="field full">
         <span>Grocery</span>
-        <input type="text" list="grocery-names" value={row.groceryName} onChange={(e) => onChange({ groceryName: e.target.value })} placeholder="Onion" />
+        <input
+          type="text"
+          list="grocery-names"
+          value={row.groceryName}
+          onChange={(e) => onChange({ groceryName: e.target.value })}
+          placeholder="Onion"
+        />
       </label>
       <label className="field">
         <span>Cooking amount</span>
-        <input type="text" value={row.cookingAmount} onChange={(e) => onChange({ cookingAmount: e.target.value })} placeholder="1 cup" />
+        <input
+          type="text"
+          value={row.cookingAmount}
+          onChange={(e) => onChange({ cookingAmount: e.target.value })}
+          placeholder="1 cup"
+        />
       </label>
       <label className="field">
         <span>Preparation</span>
-        <input type="text" value={row.preparation} onChange={(e) => onChange({ preparation: e.target.value })} placeholder="diced" />
+        <input
+          type="text"
+          value={row.preparation}
+          onChange={(e) => onChange({ preparation: e.target.value })}
+          placeholder="diced"
+        />
       </label>
       <div className="row full extras">
         <label className="check-inline">
-          <input type="checkbox" checked={row.optional} onChange={(e) => onChange({ optional: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={row.optional}
+            onChange={(e) => onChange({ optional: e.target.checked })}
+          />
           Optional
         </label>
-        <SubRecipeSelect value={row.subRecipeId} excludeId={recipeId} onChange={(subRecipeId) => onChange({ subRecipeId })} />
+        <SubRecipeSelect
+          value={row.subRecipeId}
+          excludeId={recipeId}
+          onChange={(subRecipeId) => onChange({ subRecipeId })}
+        />
       </div>
     </>
   );
 }
 
-function SubRecipeSelect({ value, excludeId, onChange }: { value: string; excludeId: number | null; onChange: (value: string) => void }) {
+function SubRecipeSelect({
+  value,
+  excludeId,
+  onChange,
+}: {
+  value: string;
+  excludeId: number | null;
+  onChange: (value: string) => void;
+}) {
   const { recipes } = useData();
   return (
     <label className="field grow">
@@ -406,13 +554,35 @@ function SubRecipeSelect({ value, excludeId, onChange }: { value: string; exclud
   );
 }
 
-function RowControls({ index, count, onMove, onRemove }: { index: number; count: number; onMove: (by: number) => void; onRemove: () => void }) {
+function RowControls({
+  index,
+  count,
+  onMove,
+  onRemove,
+}: {
+  index: number;
+  count: number;
+  onMove: (by: number) => void;
+  onRemove: () => void;
+}) {
   return (
     <div className="row full">
-      <button type="button" className="btn plain small" disabled={index === 0} onClick={() => onMove(-1)} aria-label="Move up">
+      <button
+        type="button"
+        className="btn plain small"
+        disabled={index === 0}
+        onClick={() => onMove(-1)}
+        aria-label="Move up"
+      >
         ↑ Up
       </button>
-      <button type="button" className="btn plain small" disabled={index === count - 1} onClick={() => onMove(1)} aria-label="Move down">
+      <button
+        type="button"
+        className="btn plain small"
+        disabled={index === count - 1}
+        onClick={() => onMove(1)}
+        aria-label="Move down"
+      >
         ↓ Down
       </button>
       <span className="grow" />
@@ -424,13 +594,19 @@ function RowControls({ index, count, onMove, onRemove }: { index: number; count:
 }
 
 function NotesFields({ form, dispatch }: { form: RecipeForm; dispatch: FormDispatch }) {
-  const setText = (field: "steps" | "note" | "sourceName" | "sourceUrl") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    dispatch({ type: "setText", field, value: e.target.value });
+  const setText =
+    (field: "steps" | "note" | "sourceName" | "sourceUrl") =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      dispatch({ type: "setText", field, value: e.target.value });
   return (
     <>
       <label className="field">
         <span>Steps</span>
-        <textarea value={form.steps} onChange={setText("steps")} placeholder="Leave a blank line between steps." />
+        <textarea
+          value={form.steps}
+          onChange={setText("steps")}
+          placeholder="Leave a blank line between steps."
+        />
       </label>
       <label className="field">
         <span>Note</span>
@@ -443,7 +619,12 @@ function NotesFields({ form, dispatch }: { form: RecipeForm; dispatch: FormDispa
         </label>
         <label className="field">
           <span>Source link</span>
-          <input type="text" inputMode="url" value={form.sourceUrl} onChange={setText("sourceUrl")} />
+          <input
+            type="text"
+            inputMode="url"
+            value={form.sourceUrl}
+            onChange={setText("sourceUrl")}
+          />
         </label>
       </div>
     </>
@@ -454,7 +635,9 @@ function DeleteRecipeButton({ id, name }: { id: number; name: string }) {
   const [, navigate] = useLocation();
   const { reload } = useData();
   const remove = async () => {
-    if (!confirm(`Delete ${name}? This can't be undone.`)) return;
+    if (!confirm(`Delete ${name}? This can't be undone.`)) {
+      return;
+    }
     await api.del(`/api/recipes/${id}`);
     await reload(["recipes"]);
     navigate("/recipes");

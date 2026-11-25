@@ -7,7 +7,8 @@ const recipes = [
   { name: "Cookies", collectionIds: [3] },
   { name: "Soup", collectionIds: [] },
 ];
-const names = (chosen: number[], query = "") => filterRecipes(recipes, chosen, query).map((r) => r.name);
+const names = (chosen: number[], query = "") =>
+  filterRecipes(recipes, chosen, query).map((r) => r.name);
 
 describe("recipe filters", () => {
   it("shows everything when no collection is chosen", () => {

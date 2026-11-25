@@ -35,15 +35,34 @@ export function getSetting(db: Conn, key: string): string | undefined {
 }
 
 export function setSetting(db: Conn, key: string, value: string) {
-  db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } }).run();
+  db.insert(settings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: settings.key, set: { value } })
+    .run();
 }
 
-function toGrocery(row: { g: typeof groceries.$inferSelect; p: typeof products.$inferSelect | null }): Grocery {
+function toGrocery(row: {
+  g: typeof groceries.$inferSelect;
+  p: typeof products.$inferSelect | null;
+}): Grocery {
   const { g, p } = row;
   const product: Product | null = p
-    ? { store: p.store, storeId: p.storeId, name: p.name, size: p.size, imageUrl: p.imageUrl, soldBy: p.soldBy }
+    ? {
+        store: p.store,
+        storeId: p.storeId,
+        name: p.name,
+        size: p.size,
+        imageUrl: p.imageUrl,
+        soldBy: p.soldBy,
+      }
     : null;
-  return { id: g.id, name: g.name, unit: g.unit, location: isLocation(g.location) ? g.location : null, product };
+  return {
+    id: g.id,
+    name: g.name,
+    unit: g.unit,
+    location: isLocation(g.location) ? g.location : null,
+    product,
+  };
 }
 
 export function listGroceries(db: Conn): Grocery[] {
@@ -63,17 +82,31 @@ export function getGrocery(db: Conn, id: number): Grocery {
     .leftJoin(products, eq(products.groceryId, groceries.id))
     .where(eq(groceries.id, id))
     .get();
-  if (!row) throw new NotFound(`No grocery ${id}`);
+  if (!row) {
+    throw new NotFound(`No grocery ${id}`);
+  }
   return toGrocery(row);
 }
 
-export function findOrCreateGrocery(db: Conn, name: string, unit = ""): { grocery: Grocery; created: boolean } {
+export function findOrCreateGrocery(
+  db: Conn,
+  name: string,
+  unit = "",
+): { grocery: Grocery; created: boolean } {
   const clean = name.replace(/\s+/g, " ").trim();
-  if (!clean) throw new Conflict("A grocery needs a name.");
+  if (!clean) {
+    throw new Conflict("A grocery needs a name.");
+  }
   const key = groceryKey(clean);
   const existing = db.select().from(groceries).where(eq(groceries.nameKey, key)).get();
-  if (existing) return { grocery: getGrocery(db, existing.id), created: false };
-  const row = db.insert(groceries).values({ name: clean, nameKey: key, unit: unit.trim() }).returning().get();
+  if (existing) {
+    return { grocery: getGrocery(db, existing.id), created: false };
+  }
+  const row = db
+    .insert(groceries)
+    .values({ name: clean, nameKey: key, unit: unit.trim() })
+    .returning()
+    .get();
   return { grocery: getGrocery(db, row.id), created: true };
 }
 
@@ -86,16 +119,26 @@ export function updateGrocery(
   const set: Partial<typeof groceries.$inferInsert> = {};
   if (patch.name !== undefined) {
     const clean = patch.name.replace(/\s+/g, " ").trim();
-    if (!clean) throw new Conflict("A grocery needs a name.");
+    if (!clean) {
+      throw new Conflict("A grocery needs a name.");
+    }
     const key = groceryKey(clean);
     const other = db.select().from(groceries).where(eq(groceries.nameKey, key)).get();
-    if (other && other.id !== id) throw new Conflict(`"${other.name}" is already in the catalog. Merge them instead.`);
+    if (other && other.id !== id) {
+      throw new Conflict(`"${other.name}" is already in the catalog. Merge them instead.`);
+    }
     set.name = clean;
     set.nameKey = key;
   }
-  if (patch.unit !== undefined) set.unit = patch.unit.trim();
-  if (patch.location !== undefined) set.location = patch.location;
-  if (Object.keys(set).length) db.update(groceries).set(set).where(eq(groceries.id, id)).run();
+  if (patch.unit !== undefined) {
+    set.unit = patch.unit.trim();
+  }
+  if (patch.location !== undefined) {
+    set.location = patch.location;
+  }
+  if (Object.keys(set).length) {
+    db.update(groceries).set(set).where(eq(groceries.id, id)).run();
+  }
   return getGrocery(db, id);
 }
 
@@ -116,18 +159,31 @@ export function removeProduct(db: Conn, groceryId: number): Grocery {
 export function deleteGrocery(db: Conn, id: number) {
   getGrocery(db, id);
   const used =
-    db.select({ id: ingredients.id }).from(ingredients).where(eq(ingredients.groceryId, id)).get() ??
+    db
+      .select({ id: ingredients.id })
+      .from(ingredients)
+      .where(eq(ingredients.groceryId, id))
+      .get() ??
     db.select({ id: listItems.id }).from(listItems).where(eq(listItems.groceryId, id)).get();
-  if (used) throw new Conflict("This grocery is used by a recipe or a list. Merge it into another grocery instead.");
+  if (used) {
+    throw new Conflict(
+      "This grocery is used by a recipe or a list. Merge it into another grocery instead.",
+    );
+  }
   db.delete(groceries).where(eq(groceries.id, id)).run();
 }
 
 export function mergeGrocery(db: Db, fromId: number, intoId: number): Grocery {
-  if (fromId === intoId) throw new Conflict("Pick a different grocery to merge into.");
+  if (fromId === intoId) {
+    throw new Conflict("Pick a different grocery to merge into.");
+  }
   return db.transaction((tx) => {
     const from = getGrocery(tx, fromId);
     const into = getGrocery(tx, intoId);
-    tx.update(ingredients).set({ groceryId: intoId }).where(eq(ingredients.groceryId, fromId)).run();
+    tx.update(ingredients)
+      .set({ groceryId: intoId })
+      .where(eq(ingredients.groceryId, fromId))
+      .run();
 
     const moving = tx.select().from(listItems).where(eq(listItems.groceryId, fromId)).all();
     for (const item of moving) {
@@ -137,24 +193,38 @@ export function mergeGrocery(db: Db, fromId: number, intoId: number): Grocery {
         .where(and(eq(listItems.listId, item.listId), eq(listItems.groceryId, intoId)))
         .get();
       if (twin) {
-        const amount = twin.amount === null && item.amount === null ? null : (twin.amount ?? 0) + (item.amount ?? 0);
+        const amount =
+          twin.amount === null && item.amount === null
+            ? null
+            : (twin.amount ?? 0) + (item.amount ?? 0);
         const details = [twin.details, item.details].filter(Boolean).join("; ");
-        tx.update(listItems).set({ amount, details, done: twin.done && item.done }).where(eq(listItems.id, twin.id)).run();
+        tx.update(listItems)
+          .set({ amount, details, done: twin.done && item.done })
+          .where(eq(listItems.id, twin.id))
+          .run();
         tx.delete(listItems).where(eq(listItems.id, item.id)).run();
       } else {
         tx.update(listItems).set({ groceryId: intoId }).where(eq(listItems.id, item.id)).run();
       }
     }
 
-    if (!into.product && from.product) setProduct(tx, intoId, from.product);
-    if (!into.unit && from.unit) tx.update(groceries).set({ unit: from.unit }).where(eq(groceries.id, intoId)).run();
+    if (!into.product && from.product) {
+      setProduct(tx, intoId, from.product);
+    }
+    if (!into.unit && from.unit) {
+      tx.update(groceries).set({ unit: from.unit }).where(eq(groceries.id, intoId)).run();
+    }
     tx.delete(groceries).where(eq(groceries.id, fromId)).run();
     return getGrocery(tx, intoId);
   });
 }
 
 export function listMergeSuggestions(db: Conn) {
-  const rows = db.select().from(mergeSuggestions).where(eq(mergeSuggestions.status, "pending")).all();
+  const rows = db
+    .select()
+    .from(mergeSuggestions)
+    .where(eq(mergeSuggestions.status, "pending"))
+    .all();
   const byId = new Map(listGroceries(db).map((g) => [g.id, g]));
   return rows.flatMap((r) => {
     const a = byId.get(r.groceryA);
@@ -170,7 +240,9 @@ export function keepApart(db: Conn, suggestionId: number) {
     .where(eq(mergeSuggestions.id, suggestionId))
     .returning()
     .get();
-  if (!done) throw new NotFound(`No suggestion ${suggestionId}`);
+  if (!done) {
+    throw new NotFound(`No suggestion ${suggestionId}`);
+  }
 }
 
 export function addMergeSuggestion(db: Conn, a: number, b: number) {
@@ -184,14 +256,21 @@ export function addMergeSuggestion(db: Conn, a: number, b: number) {
       ),
     )
     .get();
-  if (!existing) db.insert(mergeSuggestions).values({ groceryA: a, groceryB: b }).run();
+  if (!existing) {
+    db.insert(mergeSuggestions).values({ groceryA: a, groceryB: b }).run();
+  }
 }
 
 export function groceryUsage(db: Conn): Record<number, { recipes: number; lists: number }> {
   const usage: Record<number, { recipes: number; lists: number }> = {};
   const seen = new Set<string>();
-  for (const row of db.select({ g: ingredients.groceryId, r: ingredients.recipeId }).from(ingredients).all()) {
-    if (row.g === null || seen.has(`${row.g}:${row.r}`)) continue;
+  for (const row of db
+    .select({ g: ingredients.groceryId, r: ingredients.recipeId })
+    .from(ingredients)
+    .all()) {
+    if (row.g === null || seen.has(`${row.g}:${row.r}`)) {
+      continue;
+    }
     seen.add(`${row.g}:${row.r}`);
     (usage[row.g] ??= { recipes: 0, lists: 0 }).recipes++;
   }
@@ -211,16 +290,24 @@ export function listCollections(db: Conn): Collection[] {
 
 export function createCollection(db: Conn, name: string): Collection {
   const clean = name.trim();
-  if (!clean) throw new Conflict("A collection needs a name.");
+  if (!clean) {
+    throw new Conflict("A collection needs a name.");
+  }
   const position = listCollections(db).length;
-  return db.insert(collections).values({ name: clean, position }).returning({ id: collections.id, name: collections.name }).get();
+  return db
+    .insert(collections)
+    .values({ name: clean, position })
+    .returning({ id: collections.id, name: collections.name })
+    .get();
 }
 
 function collectionIdsByRecipe(db: Conn, recipeIds?: number[]): Map<number, number[]> {
   const q = db.select().from(recipeCollections);
   const rows = recipeIds ? q.where(inArray(recipeCollections.recipeId, recipeIds)).all() : q.all();
   const map = new Map<number, number[]>();
-  for (const r of rows) map.set(r.recipeId, [...(map.get(r.recipeId) ?? []), r.collectionId]);
+  for (const r of rows) {
+    map.set(r.recipeId, [...(map.get(r.recipeId) ?? []), r.collectionId]);
+  }
   return map;
 }
 
@@ -243,11 +330,15 @@ export function listRecipes(db: Conn): RecipeSummary[] {
 }
 
 export function getRecipes(db: Conn, ids: number[]): Recipe[] {
-  if (!ids.length) return [];
+  if (!ids.length) {
+    return [];
+  }
   const rows = db.select().from(recipes).where(inArray(recipes.id, ids)).all();
   const cols = collectionIdsByRecipe(db, ids);
   const ingredientsOf = ingredientRowsByRecipe(db, ids);
-  const byId = new Map(rows.map((r) => [r.id, toRecipe(r, cols.get(r.id) ?? [], ingredientsOf.get(r.id) ?? [])]));
+  const byId = new Map(
+    rows.map((r) => [r.id, toRecipe(r, cols.get(r.id) ?? [], ingredientsOf.get(r.id) ?? [])]),
+  );
   return ids.flatMap((id) => {
     const r = byId.get(id);
     return r ? [r] : [];
@@ -264,20 +355,43 @@ function ingredientRowsByRecipe(db: Conn, recipeIds: number[]): Map<number, Ingr
     .where(inArray(ingredients.recipeId, recipeIds))
     .orderBy(asc(ingredients.recipeId), asc(ingredients.position))
     .all();
-  const subNames = recipeNames(db, found.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null));
+  const subNames = recipeNames(
+    db,
+    found.map(({ i }) => i.subRecipeId).filter((n): n is number => n !== null),
+  );
   const byRecipe = new Map<number, IngredientRow[]>();
-  for (const { i, name } of found) byRecipe.set(i.recipeId, [...(byRecipe.get(i.recipeId) ?? []), toIngredientRow(i, name ?? "", subNames)]);
+  for (const { i, name } of found) {
+    byRecipe.set(i.recipeId, [
+      ...(byRecipe.get(i.recipeId) ?? []),
+      toIngredientRow(i, name ?? "", subNames),
+    ]);
+  }
   return byRecipe;
 }
 
 function recipeNames(db: Conn, ids: number[]): Map<number, string> {
   const unique = [...new Set(ids)];
-  if (!unique.length) return new Map();
-  return new Map(db.select({ id: recipes.id, name: recipes.name }).from(recipes).where(inArray(recipes.id, unique)).all().map((r) => [r.id, r.name]));
+  if (!unique.length) {
+    return new Map();
+  }
+  return new Map(
+    db
+      .select({ id: recipes.id, name: recipes.name })
+      .from(recipes)
+      .where(inArray(recipes.id, unique))
+      .all()
+      .map((r) => [r.id, r.name]),
+  );
 }
 
-function toIngredientRow(i: IngredientRecord, groceryName: string, subNames: Map<number, string>): IngredientRow {
-  if (i.kind === "heading" || i.groceryId === null) return { kind: "heading", id: i.id, text: i.heading };
+function toIngredientRow(
+  i: IngredientRecord,
+  groceryName: string,
+  subNames: Map<number, string>,
+): IngredientRow {
+  if (i.kind === "heading" || i.groceryId === null) {
+    return { kind: "heading", id: i.id, text: i.heading };
+  }
   return {
     kind: "ingredient",
     id: i.id,
@@ -286,11 +400,18 @@ function toIngredientRow(i: IngredientRecord, groceryName: string, subNames: Map
     cookingAmount: i.cookingAmount,
     preparation: i.preparation,
     optional: i.optional,
-    subRecipe: i.subRecipeId !== null ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" } : null,
+    subRecipe:
+      i.subRecipeId !== null
+        ? { id: i.subRecipeId, name: subNames.get(i.subRecipeId) ?? "" }
+        : null,
   };
 }
 
-function toRecipe(r: typeof recipes.$inferSelect, collectionIds: number[], rows: IngredientRow[]): Recipe {
+function toRecipe(
+  r: typeof recipes.$inferSelect,
+  collectionIds: number[],
+  rows: IngredientRow[],
+): Recipe {
   return {
     id: r.id,
     name: r.name,
@@ -311,7 +432,9 @@ function toRecipe(r: typeof recipes.$inferSelect, collectionIds: number[], rows:
 
 export function getRecipe(db: Conn, id: number): Recipe {
   const [recipe] = getRecipes(db, [id]);
-  if (!recipe) throw new NotFound(`No recipe ${id}`);
+  if (!recipe) {
+    throw new NotFound(`No recipe ${id}`);
+  }
   return recipe;
 }
 
@@ -344,19 +467,29 @@ function writeRecipeParts(tx: Tx, id: number, input: RecipeInput) {
   tx.delete(recipeCollections).where(eq(recipeCollections.recipeId, id)).run();
   const known = new Set(listCollections(tx).map((c) => c.id));
   for (const collectionId of new Set(input.collectionIds)) {
-    if (known.has(collectionId)) tx.insert(recipeCollections).values({ recipeId: id, collectionId }).run();
+    if (known.has(collectionId)) {
+      tx.insert(recipeCollections).values({ recipeId: id, collectionId }).run();
+    }
   }
   tx.delete(ingredients).where(eq(ingredients.recipeId, id)).run();
   input.ingredients.forEach((ing, position) => {
     if (ing.kind === "heading") {
-      if (ing.text.trim()) tx.insert(ingredients).values({ recipeId: id, position, kind: "heading", heading: ing.text.trim() }).run();
+      if (ing.text.trim()) {
+        tx.insert(ingredients)
+          .values({ recipeId: id, position, kind: "heading", heading: ing.text.trim() })
+          .run();
+      }
       return;
     }
-    if (!ing.groceryName.trim()) return;
+    if (!ing.groceryName.trim()) {
+      return;
+    }
     const { grocery } = findOrCreateGrocery(tx, ing.groceryName);
     const subRecipeId = ing.subRecipeId ?? null;
     if (subRecipeId !== null) {
-      if (subRecipeId === id) throw new Conflict("A recipe can't use itself as an ingredient.");
+      if (subRecipeId === id) {
+        throw new Conflict("A recipe can't use itself as an ingredient.");
+      }
       if (!tx.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, subRecipeId)).get()) {
         throw new Conflict(`There's no recipe ${subRecipeId} to use as an ingredient.`);
       }
@@ -378,7 +511,9 @@ function writeRecipeParts(tx: Tx, id: number, input: RecipeInput) {
 
 function recipeColumns(input: RecipeInput) {
   const name = input.name.trim();
-  if (!name) throw new Conflict("A recipe needs a name.");
+  if (!name) {
+    throw new Conflict("A recipe needs a name.");
+  }
   return {
     name,
     servings: input.servings.trim(),
@@ -430,7 +565,12 @@ export function listLists(db: Conn): GroceryList[] {
     .innerJoin(groceries, eq(groceries.id, listItems.groceryId))
     .orderBy(asc(listItems.position), asc(listItems.id))
     .all();
-  all.sort((a, b) => Number(b.kind === "essentials") - Number(a.kind === "essentials") || Number(b.isDefault) - Number(a.isDefault) || a.id - b.id);
+  all.sort(
+    (a, b) =>
+      Number(b.kind === "essentials") - Number(a.kind === "essentials") ||
+      Number(b.isDefault) - Number(a.isDefault) ||
+      a.id - b.id,
+  );
   return all.map((l) => ({
     id: l.id,
     name: l.name,
@@ -438,19 +578,34 @@ export function listLists(db: Conn): GroceryList[] {
     isDefault: l.isDefault,
     items: items
       .filter(({ i }) => i.listId === l.id)
-      .map(({ i, name }) => ({ id: i.id, groceryId: i.groceryId, groceryName: name, amount: i.amount, details: i.details, done: i.done })),
+      .map(({ i, name }) => ({
+        id: i.id,
+        groceryId: i.groceryId,
+        groceryName: name,
+        amount: i.amount,
+        details: i.details,
+        done: i.done,
+      })),
   }));
 }
 
 export function getList(db: Conn, id: number): GroceryList {
   const list = listLists(db).find((l) => l.id === id);
-  if (!list) throw new NotFound(`No list ${id}`);
+  if (!list) {
+    throw new NotFound(`No list ${id}`);
+  }
   return list;
 }
 
-export function createList(db: Conn, name: string, kind: "essentials" | "grocery" = "grocery"): GroceryList {
+export function createList(
+  db: Conn,
+  name: string,
+  kind: "essentials" | "grocery" = "grocery",
+): GroceryList {
   const clean = name.trim();
-  if (!clean) throw new Conflict("A list needs a name.");
+  if (!clean) {
+    throw new Conflict("A list needs a name.");
+  }
   if (kind === "essentials" && db.select().from(lists).where(eq(lists.kind, "essentials")).get()) {
     throw new Conflict("There is already an Essentials list.");
   }
@@ -463,15 +618,23 @@ export function createList(db: Conn, name: string, kind: "essentials" | "grocery
   return getList(db, row.id);
 }
 
-export function updateList(db: Db, id: number, patch: { name?: string; isDefault?: boolean }): GroceryList {
+export function updateList(
+  db: Db,
+  id: number,
+  patch: { name?: string; isDefault?: boolean },
+): GroceryList {
   const list = getList(db, id);
   db.transaction((tx) => {
     if (patch.name !== undefined) {
-      if (!patch.name.trim()) throw new Conflict("A list needs a name.");
+      if (!patch.name.trim()) {
+        throw new Conflict("A list needs a name.");
+      }
       tx.update(lists).set({ name: patch.name.trim() }).where(eq(lists.id, id)).run();
     }
     if (patch.isDefault) {
-      if (list.kind === "essentials") throw new Conflict("The Essentials list can't be the default list.");
+      if (list.kind === "essentials") {
+        throw new Conflict("The Essentials list can't be the default list.");
+      }
       tx.update(lists).set({ isDefault: false }).run();
       tx.update(lists).set({ isDefault: true }).where(eq(lists.id, id)).run();
     }
@@ -481,11 +644,20 @@ export function updateList(db: Db, id: number, patch: { name?: string; isDefault
 
 export function deleteList(db: Conn, id: number) {
   const list = getList(db, id);
-  if (list.kind === "essentials") throw new Conflict("The Essentials list can't be deleted.");
+  if (list.kind === "essentials") {
+    throw new Conflict("The Essentials list can't be deleted.");
+  }
   db.delete(lists).where(eq(lists.id, id)).run();
   if (list.isDefault) {
-    const next = db.select().from(lists).where(eq(lists.kind, "grocery")).orderBy(asc(lists.id)).get();
-    if (next) db.update(lists).set({ isDefault: true }).where(eq(lists.id, next.id)).run();
+    const next = db
+      .select()
+      .from(lists)
+      .where(eq(lists.kind, "grocery"))
+      .orderBy(asc(lists.id))
+      .get();
+    if (next) {
+      db.update(lists).set({ isDefault: true }).where(eq(lists.id, next.id)).run();
+    }
   }
 }
 
@@ -506,11 +678,14 @@ export function addListItem(
       .get();
     const amount = input.amount ?? null;
     if (twin) {
-      const sum = twin.amount === null && amount === null ? null : (twin.amount ?? 0) + (amount ?? 0);
+      const sum =
+        twin.amount === null && amount === null ? null : (twin.amount ?? 0) + (amount ?? 0);
       tx.update(listItems).set({ amount: sum, done: false }).where(eq(listItems.id, twin.id)).run();
     } else {
       const position = tx.select().from(listItems).where(eq(listItems.listId, listId)).all().length;
-      tx.insert(listItems).values({ listId, groceryId, amount, details: input.details?.trim() ?? "", position }).run();
+      tx.insert(listItems)
+        .values({ listId, groceryId, amount, details: input.details?.trim() ?? "", position })
+        .run();
     }
   });
   return getList(db, listId);
@@ -522,24 +697,38 @@ export function updateListItem(
   patch: { done?: boolean; amount?: number | null; details?: string },
 ): GroceryList {
   const item = db.select().from(listItems).where(eq(listItems.id, id)).get();
-  if (!item) throw new NotFound(`No list item ${id}`);
+  if (!item) {
+    throw new NotFound(`No list item ${id}`);
+  }
   const list = getList(db, item.listId);
   const set: Partial<typeof listItems.$inferInsert> = {};
-  if (patch.done !== undefined && list.kind !== "essentials") set.done = patch.done;
-  if (patch.amount !== undefined) set.amount = patch.amount;
-  if (patch.details !== undefined) set.details = patch.details.trim();
-  if (Object.keys(set).length) db.update(listItems).set(set).where(eq(listItems.id, id)).run();
+  if (patch.done !== undefined && list.kind !== "essentials") {
+    set.done = patch.done;
+  }
+  if (patch.amount !== undefined) {
+    set.amount = patch.amount;
+  }
+  if (patch.details !== undefined) {
+    set.details = patch.details.trim();
+  }
+  if (Object.keys(set).length) {
+    db.update(listItems).set(set).where(eq(listItems.id, id)).run();
+  }
   return getList(db, item.listId);
 }
 
 export function deleteListItem(db: Conn, id: number): GroceryList {
   const item = db.select().from(listItems).where(eq(listItems.id, id)).get();
-  if (!item) throw new NotFound(`No list item ${id}`);
+  if (!item) {
+    throw new NotFound(`No list item ${id}`);
+  }
   db.delete(listItems).where(eq(listItems.id, id)).run();
   return getList(db, item.listId);
 }
 
 export function clearDone(db: Conn, listId: number): GroceryList {
-  db.delete(listItems).where(and(eq(listItems.listId, listId), eq(listItems.done, true))).run();
+  db.delete(listItems)
+    .where(and(eq(listItems.listId, listId), eq(listItems.done, true)))
+    .run();
   return getList(db, listId);
 }

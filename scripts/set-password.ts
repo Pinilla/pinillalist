@@ -7,7 +7,9 @@ async function readHidden(prompt: string): Promise<string> {
   const { stdin, stdout } = process;
   if (!stdin.isTTY) {
     const chunks: Buffer[] = [];
-    for await (const chunk of stdin) chunks.push(chunk as Buffer);
+    for await (const chunk of stdin) {
+      chunks.push(chunk as Buffer);
+    }
     return Buffer.concat(chunks).toString("utf8").split("\n")[0]!.trim();
   }
   stdout.write(prompt);
@@ -29,8 +31,11 @@ async function readHidden(prompt: string): Promise<string> {
           reject(new Error("Cancelled"));
           return;
         }
-        if (ch === "\u007f") value = value.slice(0, -1);
-        else value += ch;
+        if (ch === "\u007f") {
+          value = value.slice(0, -1);
+        } else {
+          value += ch;
+        }
       }
     });
   });

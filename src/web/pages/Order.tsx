@@ -16,9 +16,25 @@ import {
   type RecipeChoice,
 } from "../../shared/order.ts";
 import type { CheckItem } from "../../shared/stock.ts";
-import { STORE_NAMES, type Grocery, type IngredientRow, type ListItem, type Product, type Recipe, type RecipeSummary } from "../../shared/types.ts";
+import {
+  STORE_NAMES,
+  type Grocery,
+  type IngredientRow,
+  type ListItem,
+  type Product,
+  type Recipe,
+  type RecipeSummary,
+} from "../../shared/types.ts";
 import { api } from "../api.ts";
-import { CollectionChips, Stepper, StoreBadge, Thumb, productLabel, toast, useDesktop } from "../components.tsx";
+import {
+  CollectionChips,
+  Stepper,
+  StoreBadge,
+  Thumb,
+  productLabel,
+  toast,
+  useDesktop,
+} from "../components.tsx";
 import { useData, useRecipe } from "../data.tsx";
 
 const STORAGE_KEY = "pinillalist.order";
@@ -32,13 +48,21 @@ export function OrderPage() {
   const picked = usePickedRecipes(state.recipeIds);
   const essentials = useMemo(() => essentialItems(lists), [lists]);
   const plan = useMemo(
-    () => planOrder(state, { recipes: picked.recipes, subRecipes: picked.subRecipes, essentials, groceries: groceryById }),
+    () =>
+      planOrder(state, {
+        recipes: picked.recipes,
+        subRecipes: picked.subRecipes,
+        essentials,
+        groceries: groceryById,
+      }),
     [state, picked, essentials, groceryById],
   );
   const dispatch: Dispatch = (action) => setState((s) => updateOrder(s, action, plan.check));
   useCardsChanged(plan.check, dispatch);
 
-  if (!loaded) return <main className="wrap empty">Loading…</main>;
+  if (!loaded) {
+    return <main className="wrap empty">Loading…</main>;
+  }
 
   const goToStep = (step: number) => {
     dispatch({ type: "goToStep", step });
@@ -50,7 +74,12 @@ export function OrderPage() {
       <OrderHeader step={state.step} onStep={goToStep} />
       <div className="stack step-body">
         {state.step === 0 && <PickRecipes state={state} dispatch={dispatch} />}
-        {state.step === 1 && (picked.loading ? <p className="empty">Loading the recipes…</p> : <StockCheck state={state} dispatch={dispatch} plan={plan} />)}
+        {state.step === 1 &&
+          (picked.loading ? (
+            <p className="empty">Loading the recipes…</p>
+          ) : (
+            <StockCheck state={state} dispatch={dispatch} plan={plan} />
+          ))}
         {state.step === 2 && <AnythingElse state={state} dispatch={dispatch} />}
         {state.step === 3 && <FillCarts state={state} dispatch={dispatch} plan={plan} />}
       </div>
@@ -64,7 +93,9 @@ function useSavedOrder() {
   const setState = (update: (s: OrderState) => OrderState) =>
     setStateRaw((s) => {
       const next = update(s);
-      if (next !== s) save(next);
+      if (next !== s) {
+        save(next);
+      }
       return next;
     });
   return [state, setState] as const;
@@ -102,7 +133,9 @@ function usePickedRecipes(recipeIds: number[]) {
     let live = true;
     fetchWithSubRecipes(idsKey)
       .then(({ picked, subs }) => {
-        if (!live) return;
+        if (!live) {
+          return;
+        }
         setRecipes(picked);
         setSubRecipes(new Map(subs.map((r) => [r.id, r])));
         setLoadedFor(idsKey);
@@ -113,7 +146,10 @@ function usePickedRecipes(recipeIds: number[]) {
     };
   }, [idsKey]);
 
-  return useMemo(() => ({ recipes, subRecipes, loading: idsKey !== "" && loadedFor !== idsKey }), [recipes, subRecipes, idsKey, loadedFor]);
+  return useMemo(
+    () => ({ recipes, subRecipes, loading: idsKey !== "" && loadedFor !== idsKey }),
+    [recipes, subRecipes, idsKey, loadedFor],
+  );
 }
 
 async function fetchWithSubRecipes(idsKey: string) {
@@ -152,7 +188,14 @@ function OrderHeader({ step, onStep }: { step: number; onStep: (step: number) =>
       </div>
       <div className="steps" role="tablist" aria-label="Steps">
         {STEPS.map((name, i) => (
-          <button key={name} role="tab" aria-selected={i === step} aria-label={name} className={i <= step ? "done" : ""} onClick={() => onStep(i)}>
+          <button
+            key={name}
+            role="tab"
+            aria-selected={i === step}
+            aria-label={name}
+            className={i <= step ? "done" : ""}
+            onClick={() => onStep(i)}
+          >
             <span className="step-name">
               {i + 1}. {name}
             </span>
@@ -190,20 +233,31 @@ function PickRecipes({ state, dispatch }: StepProps) {
   const [sheetFor, setSheetFor] = useState<RecipeSummary | null>(null);
   const nameOf = recipeNamer(recipes);
   const unpick = (recipeId: number) => dispatch({ type: "unpickRecipe", recipeId });
-  const tap = (r: RecipeSummary) => (r.hasExtras ? setSheetFor(r) : dispatch({ type: "toggleRecipe", recipeId: r.id }));
+  const tap = (r: RecipeSummary) =>
+    r.hasExtras ? setSheetFor(r) : dispatch({ type: "toggleRecipe", recipeId: r.id });
 
   return (
     <div className="stack pick">
       <div className="stack">
         {!desktop && <PickedStrip recipeIds={state.recipeIds} nameOf={nameOf} onUnpick={unpick} />}
         <p className="muted">{pickHint(state.recipeIds.length)}</p>
-        <input type="search" placeholder="Search recipes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search recipes" />
+        <input
+          type="search"
+          placeholder="Search recipes"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search recipes"
+        />
         <CollectionChips
           collections={collections}
           chosen={state.collectionFilters}
           onChange={(collectionIds) => dispatch({ type: "filterCollections", collectionIds })}
         />
-        <RecipeGrid recipes={filterRecipes(recipes, state.collectionFilters, query)} pickedIds={state.recipeIds} onTap={tap} />
+        <RecipeGrid
+          recipes={filterRecipes(recipes, state.collectionFilters, query)}
+          pickedIds={state.recipeIds}
+          onTap={tap}
+        />
       </div>
       {desktop && <PickedAside recipeIds={state.recipeIds} nameOf={nameOf} onUnpick={unpick} />}
       {sheetFor && (
@@ -235,13 +289,21 @@ function recipeNamer(recipes: RecipeSummary[]): (id: number) => string {
 }
 
 function pickHint(count: number): string {
-  return count === 0 ? "Tap the recipes you'll cook this week." : `${count} chosen. Tap again to unpick.`;
+  return count === 0
+    ? "Tap the recipes you'll cook this week."
+    : `${count} chosen. Tap again to unpick.`;
 }
 
-type PickedListProps = { recipeIds: number[]; nameOf: (id: number) => string; onUnpick: (id: number) => void };
+type PickedListProps = {
+  recipeIds: number[];
+  nameOf: (id: number) => string;
+  onUnpick: (id: number) => void;
+};
 
 function PickedStrip({ recipeIds, nameOf, onUnpick }: PickedListProps) {
-  if (recipeIds.length === 0) return null;
+  if (recipeIds.length === 0) {
+    return null;
+  }
   return (
     <section className="picked-strip" aria-label="This week">
       {recipeIds.map((id) => (
@@ -267,7 +329,11 @@ function PickedAside({ recipeIds, nameOf, onUnpick }: PickedListProps) {
           {recipeIds.map((id) => (
             <div key={id} className="li">
               <span className="grow name">{nameOf(id)}</span>
-              <button className="btn plain small" aria-label={`Unpick ${nameOf(id)}`} onClick={() => onUnpick(id)}>
+              <button
+                className="btn plain small"
+                aria-label={`Unpick ${nameOf(id)}`}
+                onClick={() => onUnpick(id)}
+              >
                 Remove
               </button>
             </div>
@@ -278,14 +344,29 @@ function PickedAside({ recipeIds, nameOf, onUnpick }: PickedListProps) {
   );
 }
 
-function RecipeGrid({ recipes, pickedIds, onTap }: { recipes: RecipeSummary[]; pickedIds: number[]; onTap: (r: RecipeSummary) => void }) {
-  if (recipes.length === 0) return <p className="empty">No recipes here.</p>;
+function RecipeGrid({
+  recipes,
+  pickedIds,
+  onTap,
+}: {
+  recipes: RecipeSummary[];
+  pickedIds: number[];
+  onTap: (r: RecipeSummary) => void;
+}) {
+  if (recipes.length === 0) {
+    return <p className="empty">No recipes here.</p>;
+  }
   return (
     <div className="grid">
       {recipes.map((r) => {
         const on = pickedIds.includes(r.id);
         return (
-          <button key={r.id} className={`tile${on ? " on" : ""}`} aria-pressed={on} onClick={() => onTap(r)}>
+          <button
+            key={r.id}
+            className={`tile${on ? " on" : ""}`}
+            aria-pressed={on}
+            onClick={() => onTap(r)}
+          >
             <Thumb photo={r.photo} name={r.name} className="tile-img" />
             <span className="t">{r.name}</span>
             {on && (
@@ -323,14 +404,22 @@ function ExtrasSheet({
   const lines = ingredientLines(recipe);
   const nested = lines.filter((r) => r.subRecipe);
   const extras = lines.filter((r) => r.optional && !r.subRecipe);
-  const save = () => onSave({ optional: optional.filter((id) => extras.some((r) => r.id === id)), subRecipes: modes });
+  const save = () =>
+    onSave({
+      optional: optional.filter((id) => extras.some((r) => r.id === id)),
+      subRecipes: modes,
+    });
 
   return (
     <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet stack" role="dialog" aria-modal="true" aria-label={summary.name}>
         <h2>{summary.name}</h2>
         {!recipe && <p className="muted">Loading…</p>}
-        <SubRecipeChoices lines={nested} modes={modes} onChange={(id, mode) => setModes((ms) => ({ ...ms, [id]: mode }))} />
+        <SubRecipeChoices
+          lines={nested}
+          modes={modes}
+          onChange={(id, mode) => setModes((ms) => ({ ...ms, [id]: mode }))}
+        />
         <OptionalChoices lines={extras} chosen={optional} onChange={setOptional} />
         <div className="row nowrap">
           {onUnpick ? (
@@ -354,7 +443,9 @@ function ExtrasSheet({
 function useRecipeOrToast(id: number): Recipe | null {
   const { recipe, error } = useRecipe(id);
   useEffect(() => {
-    if (error) toast(error);
+    if (error) {
+      toast(error);
+    }
   }, [error]);
   return recipe;
 }
@@ -391,18 +482,33 @@ function SubRecipeChoices({
   modes: Record<string, SubRecipeMode>;
   onChange: (ingredientId: number, mode: SubRecipeMode) => void;
 }) {
-  if (lines.length === 0) return null;
+  if (lines.length === 0) {
+    return null;
+  }
   return (
     <section className="stack tight">
       <span className="label">Made from other recipes</span>
       {lines.map((r) => (
-        <SubRecipeChoice key={r.id} line={r} mode={modes[r.id] ?? defaultMode(r)} onChange={(mode) => onChange(r.id, mode)} />
+        <SubRecipeChoice
+          key={r.id}
+          line={r}
+          mode={modes[r.id] ?? defaultMode(r)}
+          onChange={(mode) => onChange(r.id, mode)}
+        />
       ))}
     </section>
   );
 }
 
-function SubRecipeChoice({ line, mode, onChange }: { line: IngredientLine; mode: SubRecipeMode; onChange: (mode: SubRecipeMode) => void }) {
+function SubRecipeChoice({
+  line,
+  mode,
+  onChange,
+}: {
+  line: IngredientLine;
+  mode: SubRecipeMode;
+  onChange: (mode: SubRecipeMode) => void;
+}) {
   const { groceryById } = useData();
   const name = line.subRecipe!.name;
   return (
@@ -414,31 +520,57 @@ function SubRecipeChoice({ line, mode, onChange }: { line: IngredientLine; mode:
       </div>
       <div className="segmented" role="group" aria-label={`${name}: make, buy or have`}>
         {MODES.map((m) => (
-          <button key={m.mode} type="button" aria-pressed={mode === m.mode} onClick={() => onChange(m.mode)}>
+          <button
+            key={m.mode}
+            type="button"
+            aria-pressed={mode === m.mode}
+            onClick={() => onChange(m.mode)}
+          >
             {m.label}
           </button>
         ))}
       </div>
-      <span className="small muted">{modeEffect(line, mode, groceryById.get(line.groceryId)?.product ?? null)}</span>
+      <span className="small muted">
+        {modeEffect(line, mode, groceryById.get(line.groceryId)?.product ?? null)}
+      </span>
     </div>
   );
 }
 
 function modeEffect(line: IngredientLine, mode: SubRecipeMode, product: Product | null): string {
-  if (mode === "make") return `Adds the ${line.subRecipe!.name} ingredients to the stock check.`;
-  if (mode === "buy") return `Adds ${line.groceryName}${product ? ` (${productLabel(product)})` : ""} to the stock check.`;
+  if (mode === "make") {
+    return `Adds the ${line.subRecipe!.name} ingredients to the stock check.`;
+  }
+  if (mode === "buy") {
+    return `Adds ${line.groceryName}${product ? ` (${productLabel(product)})` : ""} to the stock check.`;
+  }
   return "Already made, so nothing is added.";
 }
 
-function OptionalChoices({ lines, chosen, onChange }: { lines: IngredientLine[]; chosen: number[]; onChange: (chosen: number[]) => void }) {
-  if (lines.length === 0) return null;
-  const toggle = (id: number, on: boolean) => onChange(on ? [...chosen, id] : chosen.filter((x) => x !== id));
+function OptionalChoices({
+  lines,
+  chosen,
+  onChange,
+}: {
+  lines: IngredientLine[];
+  chosen: number[];
+  onChange: (chosen: number[]) => void;
+}) {
+  if (lines.length === 0) {
+    return null;
+  }
+  const toggle = (id: number, on: boolean) =>
+    onChange(on ? [...chosen, id] : chosen.filter((x) => x !== id));
   return (
     <section className="stack tight">
       <span className="label">Optional. Try any this week?</span>
       {lines.map((r) => (
         <label key={r.id} className="check">
-          <input type="checkbox" checked={chosen.includes(r.id)} onChange={(e) => toggle(r.id, e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={chosen.includes(r.id)}
+            onChange={(e) => toggle(r.id, e.target.checked)}
+          />
           <span>{ingredientText(r)}</span>
         </label>
       ))}
@@ -449,9 +581,17 @@ function OptionalChoices({ lines, chosen, onChange }: { lines: IngredientLine[];
 function StockCheck({ state, dispatch, plan }: StepProps & { plan: OrderPlan }) {
   const view = plan.stockCheck;
   if (view.kind === "empty") {
-    return <p className="empty">No recipes picked and no Essentials, so there's nothing to check. Go on to anything else.</p>;
+    return (
+      <p className="empty">
+        No recipes picked and no Essentials, so there's nothing to check. Go on to anything else.
+      </p>
+    );
   }
-  if (view.kind === "summary") return <StockSummary state={state} dispatch={dispatch} check={plan.check} buying={view.buying} />;
+  if (view.kind === "summary") {
+    return (
+      <StockSummary state={state} dispatch={dispatch} check={plan.check} buying={view.buying} />
+    );
+  }
   const item = plan.check[view.index]!;
   return (
     <StockCard
@@ -460,14 +600,21 @@ function StockCheck({ state, dispatch, plan }: StepProps & { plan: OrderPlan }) 
       position={view.index}
       count={plan.check.length}
       answer={state.stock[item.groceryId]}
-      onBack={view.index > 0 ? () => dispatch({ type: "showCard", index: view.index - 1 }) : undefined}
+      onBack={
+        view.index > 0 ? () => dispatch({ type: "showCard", index: view.index - 1 }) : undefined
+      }
       onSummary={view.allAnswered ? () => dispatch({ type: "showSummary" }) : undefined}
       onAnswer={(quantity) => dispatch({ type: "answerCard", index: view.index, quantity })}
     />
   );
 }
 
-function StockSummary({ state, dispatch, check, buying }: StepProps & { check: CheckItem[]; buying: number }) {
+function StockSummary({
+  state,
+  dispatch,
+  check,
+  buying,
+}: StepProps & { check: CheckItem[]; buying: number }) {
   const { groceryById } = useData();
   return (
     <>
@@ -482,11 +629,17 @@ function StockSummary({ state, dispatch, check, buying }: StepProps & { check: C
               const answer = state.stock[item.groceryId];
               const grocery = groceryById.get(item.groceryId);
               return (
-                <button key={item.groceryId} className={`li${answer === 0 ? " have" : ""}`} onClick={() => dispatch({ type: "showCard", index })}>
+                <button
+                  key={item.groceryId}
+                  className={`li${answer === 0 ? " have" : ""}`}
+                  onClick={() => dispatch({ type: "showCard", index })}
+                >
                   <span className="grow">
                     <span className="name">{item.groceryName}</span>
                     <br />
-                    <span className="small muted">{describeAnswer(answer, grocery?.product ?? null)}</span>
+                    <span className="small muted">
+                      {describeAnswer(answer, grocery?.product ?? null)}
+                    </span>
                   </span>
                   <StoreBadge product={grocery?.product ?? null} />
                 </button>
@@ -503,7 +656,9 @@ function groupByLocation(check: CheckItem[]) {
   const groups: { label: string; items: { item: CheckItem; index: number }[] }[] = [];
   check.forEach((item, index) => {
     const label = locationLabel(item.location);
-    if (groups.at(-1)?.label !== label) groups.push({ label, items: [] });
+    if (groups.at(-1)?.label !== label) {
+      groups.push({ label, items: [] });
+    }
     groups.at(-1)!.items.push({ item, index });
   });
   return groups;
@@ -532,13 +687,23 @@ function StockCard({
     <>
       <div className="card" aria-live="polite">
         <span className="label">
-          <span className="where">{locationLabel(item.location)}</span> · Item {position + 1} of {count}
+          <span className="where">{locationLabel(item.location)}</span> · Item {position + 1} of{" "}
+          {count}
         </span>
         <div className="item-name">{item.groceryName}</div>
-        <p className="muted">{product ? productLabel(product) : "No product linked. You'll add this in the store app by hand."}</p>
+        <p className="muted">
+          {product
+            ? productLabel(product)
+            : "No product linked. You'll add this in the store app by hand."}
+        </p>
         <EssentialNote item={item} />
         <IngredientUses item={item} />
-        <QuantityPicker key={item.groceryId} start={startingQuantity(item, answer)} product={product} onAnswer={onAnswer} />
+        <QuantityPicker
+          key={item.groceryId}
+          start={startingQuantity(item, answer)}
+          product={product}
+          onAnswer={onAnswer}
+        />
       </div>
       <div className="row between">
         <button className="btn plain" disabled={!onBack} onClick={onBack}>
@@ -550,7 +715,9 @@ function StockCard({
           </button>
         )}
       </div>
-      {answer !== undefined && <p className="small muted">Answered before: {describeAnswer(answer, product)}</p>}
+      {answer !== undefined && (
+        <p className="small muted">Answered before: {describeAnswer(answer, product)}</p>
+      )}
     </>
   );
 }
@@ -560,7 +727,9 @@ function startingQuantity(item: CheckItem, answer: number | undefined): number {
 }
 
 function EssentialNote({ item }: { item: CheckItem }) {
-  if (!item.essential) return null;
+  if (!item.essential) {
+    return null;
+  }
   return (
     <p className="essential">
       <span className="badge">Essential</span>
@@ -570,7 +739,9 @@ function EssentialNote({ item }: { item: CheckItem }) {
 }
 
 function IngredientUses({ item }: { item: CheckItem }) {
-  if (item.uses.length === 0) return <p className="small muted">Is it running low? Leave it at 0 if there's enough.</p>;
+  if (item.uses.length === 0) {
+    return <p className="small muted">Is it running low? Leave it at 0 if there's enough.</p>;
+  }
   return (
     <ul className="uses">
       {item.uses.map((use) => (
@@ -583,7 +754,15 @@ function IngredientUses({ item }: { item: CheckItem }) {
   );
 }
 
-function QuantityPicker({ start, product, onAnswer }: { start: number; product: Product | null; onAnswer: (quantity: number) => void }) {
+function QuantityPicker({
+  start,
+  product,
+  onAnswer,
+}: {
+  start: number;
+  product: Product | null;
+  onAnswer: (quantity: number) => void;
+}) {
   const [quantity, setQuantity] = useState(start);
   return (
     <div className="stack" style={{ alignItems: "center", marginTop: 8 }}>
@@ -624,8 +803,12 @@ function formatQuantity(quantity: number, product: Product | null): string {
 }
 
 function describeAnswer(quantity: number | undefined, product: Product | null): string {
-  if (quantity === undefined) return "Not checked yet";
-  if (quantity <= 0) return "Have it";
+  if (quantity === undefined) {
+    return "Not checked yet";
+  }
+  if (quantity <= 0) {
+    return "Have it";
+  }
   return `Buy ${formatQuantity(quantity, product)}`;
 }
 
@@ -634,7 +817,10 @@ function AnythingElse({ state, dispatch }: StepProps) {
     <>
       <p className="muted">Search for anything else this week.</p>
       <CatalogSearch onAdd={(groceryId) => dispatch({ type: "addExtra", groceryId })} />
-      <AddedExtras extras={state.extras} onChange={(groceryId, quantity) => dispatch({ type: "setExtra", groceryId, quantity })} />
+      <AddedExtras
+        extras={state.extras}
+        onChange={(groceryId, quantity) => dispatch({ type: "setExtra", groceryId, quantity })}
+      />
     </>
   );
 }
@@ -663,8 +849,11 @@ function CatalogSearch({ onAdd }: { onAdd: (groceryId: number) => void }) {
   };
 
   const submit = () => {
-    if (matches[0] && (exact || matches.length === 1)) add(matches[0].id);
-    else if (q && !exact) void create();
+    if (matches[0] && (exact || matches.length === 1)) {
+      add(matches[0].id);
+    } else if (q && !exact) {
+      void create();
+    }
   };
 
   return (
@@ -675,7 +864,13 @@ function CatalogSearch({ onAdd }: { onAdd: (groceryId: number) => void }) {
           submit();
         }}
       >
-        <input type="search" placeholder="Search the catalog" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search the catalog" />
+        <input
+          type="search"
+          placeholder="Search the catalog"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search the catalog"
+        />
       </form>
       {q && (
         <div className="list">
@@ -698,13 +893,21 @@ function CatalogSearch({ onAdd }: { onAdd: (groceryId: number) => void }) {
   );
 }
 
-function AddedExtras({ extras, onChange }: { extras: Record<string, number>; onChange: (groceryId: number, quantity: number) => void }) {
+function AddedExtras({
+  extras,
+  onChange,
+}: {
+  extras: Record<string, number>;
+  onChange: (groceryId: number, quantity: number) => void;
+}) {
   const { groceryById } = useData();
   const added = Object.entries(extras).flatMap(([id, quantity]) => {
     const grocery = groceryById.get(Number(id));
     return grocery ? [{ grocery, quantity }] : [];
   });
-  if (added.length === 0) return null;
+  if (added.length === 0) {
+    return null;
+  }
   return (
     <>
       <h2>Added</h2>
@@ -739,24 +942,46 @@ function FillCarts({ state, dispatch, plan }: StepProps & { plan: OrderPlan }) {
       {nothing && <p className="empty">Nothing to buy yet. Go back and add some items.</p>}
       <div className="stack cart-grid">
         {carts.map((cart) => (
-          <StoreCartBox key={cart.store} cart={cart} sent={state.sent.includes(cart.store)} onRemove={remove} onOpen={() => dispatch({ type: "cartSent", store: cart.store })} />
+          <StoreCartBox
+            key={cart.store}
+            cart={cart}
+            sent={state.sent.includes(cart.store)}
+            onRemove={remove}
+            onOpen={() => dispatch({ type: "cartSent", store: cart.store })}
+          />
         ))}
         <HandAddList lines={unlinked} />
         <FixLinksList lines={invalid} />
-        <RemovedList removed={state.removed} onPutBack={(groceryId) => dispatch({ type: "putBack", groceryId })} />
+        <RemovedList
+          removed={state.removed}
+          onPutBack={(groceryId) => dispatch({ type: "putBack", groceryId })}
+        />
       </div>
       <p className="small muted">
-        If a store shows an error instead of the cart, one product is probably unavailable. Remove it here and tap the button again.
+        If a store shows an error instead of the cart, one product is probably unavailable. Remove
+        it here and tap the button again.
       </p>
-      <StartOverButton onStartOver={() => {
-        dispatch({ type: "startOver" });
-        window.scrollTo(0, 0);
-      }} />
+      <StartOverButton
+        onStartOver={() => {
+          dispatch({ type: "startOver" });
+          window.scrollTo(0, 0);
+        }}
+      />
     </>
   );
 }
 
-function StoreCartBox({ cart, sent, onRemove, onOpen }: { cart: StoreCart; sent: boolean; onRemove: (groceryId: number) => void; onOpen: () => void }) {
+function StoreCartBox({
+  cart,
+  sent,
+  onRemove,
+  onOpen,
+}: {
+  cart: StoreCart;
+  sent: boolean;
+  onRemove: (groceryId: number) => void;
+  onOpen: () => void;
+}) {
   const store = STORE_NAMES[cart.store];
   return (
     <section className="storebox">
@@ -767,7 +992,13 @@ function StoreCartBox({ cart, sent, onRemove, onOpen }: { cart: StoreCart; sent:
         </span>
       </div>
       <LineList lines={cart.lines} onRemove={onRemove} />
-      <a className={`btn big ${cart.store}`} href={cart.url} target="_blank" rel="noopener noreferrer" onClick={onOpen}>
+      <a
+        className={`btn big ${cart.store}`}
+        href={cart.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onOpen}
+      >
         Fill my {store} cart
       </a>
       {sent && (
@@ -780,7 +1011,13 @@ function StoreCartBox({ cart, sent, onRemove, onOpen }: { cart: StoreCart; sent:
   );
 }
 
-function LineList({ lines, onRemove }: { lines: OrderLine[]; onRemove: (groceryId: number) => void }) {
+function LineList({
+  lines,
+  onRemove,
+}: {
+  lines: OrderLine[];
+  onRemove: (groceryId: number) => void;
+}) {
   return (
     <div className="list">
       {lines.map((l) => (
@@ -795,7 +1032,11 @@ function LineList({ lines, onRemove }: { lines: OrderLine[]; onRemove: (groceryI
             )}
           </span>
           <strong>{formatQuantity(l.quantity, l.product)}</strong>
-          <button className="btn plain small" aria-label={`Remove ${l.groceryName}`} onClick={() => onRemove(l.groceryId)}>
+          <button
+            className="btn plain small"
+            aria-label={`Remove ${l.groceryName}`}
+            onClick={() => onRemove(l.groceryId)}
+          >
             Remove
           </button>
         </div>
@@ -805,11 +1046,15 @@ function LineList({ lines, onRemove }: { lines: OrderLine[]; onRemove: (groceryI
 }
 
 function HandAddList({ lines }: { lines: OrderLine[] }) {
-  if (lines.length === 0) return null;
+  if (lines.length === 0) {
+    return null;
+  }
   return (
     <section className="storebox">
       <h2>Add these by hand</h2>
-      <p className="small muted">These groceries have no linked product, so no cart link can include them.</p>
+      <p className="small muted">
+        These groceries have no linked product, so no cart link can include them.
+      </p>
       <div className="list">
         {lines.map((l) => (
           <Link key={l.groceryId} className="li" href={`/catalog/${l.groceryId}`}>
@@ -824,11 +1069,15 @@ function HandAddList({ lines }: { lines: OrderLine[] }) {
 }
 
 function FixLinksList({ lines }: { lines: OrderLine[] }) {
-  if (lines.length === 0) return null;
+  if (lines.length === 0) {
+    return null;
+  }
   return (
     <section className="storebox">
       <h2 className="warn-text">Product links to fix</h2>
-      <p className="small muted">The store would reject these product numbers, so they're left out of the cart links.</p>
+      <p className="small muted">
+        The store would reject these product numbers, so they're left out of the cart links.
+      </p>
       <div className="list">
         {lines.map((l) => (
           <Link key={l.groceryId} className="li" href={`/catalog/${l.groceryId}`}>
@@ -841,9 +1090,17 @@ function FixLinksList({ lines }: { lines: OrderLine[] }) {
   );
 }
 
-function RemovedList({ removed, onPutBack }: { removed: number[]; onPutBack: (groceryId: number) => void }) {
+function RemovedList({
+  removed,
+  onPutBack,
+}: {
+  removed: number[];
+  onPutBack: (groceryId: number) => void;
+}) {
   const { groceryById } = useData();
-  if (removed.length === 0) return null;
+  if (removed.length === 0) {
+    return null;
+  }
   return (
     <section className="storebox">
       <h2>Removed</h2>
@@ -866,7 +1123,9 @@ function StartOverButton({ onStartOver }: { onStartOver: () => void }) {
     <button
       className="btn danger"
       onClick={() => {
-        if (confirm("Start a new weekly order? This clears this phone's choices.")) onStartOver();
+        if (confirm("Start a new weekly order? This clears this phone's choices.")) {
+          onStartOver();
+        }
       }}
     >
       Start a new order

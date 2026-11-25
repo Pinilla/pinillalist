@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Collection, Grocery, GroceryList, Recipe, RecipeSummary } from "../shared/types.ts";
 import { api } from "./api.ts";
 
@@ -25,23 +33,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async (what = ["groceries", "recipes", "collections", "lists"] as const as Array<"groceries" | "recipes" | "collections" | "lists">) => {
-    try {
-      await Promise.all(
-        what.map(async (w) => {
-          if (w === "groceries") setGroceries(await api.get<Grocery[]>("/api/groceries"));
-          if (w === "recipes") setRecipes(await api.get<RecipeSummary[]>("/api/recipes"));
-          if (w === "collections") setCollections(await api.get<Collection[]>("/api/collections"));
-          if (w === "lists") setLists(await api.get<GroceryList[]>("/api/lists"));
-        }),
-      );
-      setError(null);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoaded(true);
-    }
-  }, []);
+  const reload = useCallback(
+    async (
+      what = ["groceries", "recipes", "collections", "lists"] as const as Array<
+        "groceries" | "recipes" | "collections" | "lists"
+      >,
+    ) => {
+      try {
+        await Promise.all(
+          what.map(async (w) => {
+            if (w === "groceries") {
+              setGroceries(await api.get<Grocery[]>("/api/groceries"));
+            }
+            if (w === "recipes") {
+              setRecipes(await api.get<RecipeSummary[]>("/api/recipes"));
+            }
+            if (w === "collections") {
+              setCollections(await api.get<Collection[]>("/api/collections"));
+            }
+            if (w === "lists") {
+              setLists(await api.get<GroceryList[]>("/api/lists"));
+            }
+          }),
+        );
+        setError(null);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoaded(true);
+      }
+    },
+    [],
+  );
 
   useReloadOnReturn(reload);
 
@@ -55,7 +78,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loaded,
       error,
       reload,
-      setGrocery: (g) => setGroceries((all) => replaceById(all, g).sort((a, b) => a.name.localeCompare(b.name))),
+      setGrocery: (g) =>
+        setGroceries((all) => replaceById(all, g).sort((a, b) => a.name.localeCompare(b.name))),
       setList: (l) => setLists((all) => replaceById(all, l)),
     }),
     [groceries, recipes, collections, lists, loaded, error, reload],
@@ -68,7 +92,9 @@ function useReloadOnReturn(reload: () => Promise<void>) {
   useEffect(() => {
     void reload();
     const onVisible = () => {
-      if (document.visibilityState === "visible") void reload();
+      if (document.visibilityState === "visible") {
+        void reload();
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -76,12 +102,16 @@ function useReloadOnReturn(reload: () => Promise<void>) {
 }
 
 function replaceById<T extends { id: number }>(all: T[], item: T): T[] {
-  return all.some((x) => x.id === item.id) ? all.map((x) => (x.id === item.id ? item : x)) : [...all, item];
+  return all.some((x) => x.id === item.id)
+    ? all.map((x) => (x.id === item.id ? item : x))
+    : [...all, item];
 }
 
 export function useData(): Data {
   const data = useContext(DataContext);
-  if (!data) throw new Error("useData needs a DataProvider");
+  if (!data) {
+    throw new Error("useData needs a DataProvider");
+  }
   return data;
 }
 
@@ -89,7 +119,9 @@ export function useRecipe(id: number | null) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    if (id === null) return;
+    if (id === null) {
+      return;
+    }
     let live = true;
     api
       .get<Recipe>(`/api/recipes/${id}`)
